@@ -1,0 +1,8 @@
+name: DukesMart
+main: com.ruinscraft.dukesmart.DukesMart
+version: 0.1
+author: Ruinscraft LLC
+commands:
+  hello:  
+    description: This prints out "Hello, world!"  
+    usage: /hello  
