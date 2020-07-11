@@ -6,3 +6,9 @@ commands:
   hello:  
     description: This prints out "Hello, world!"  
     usage: /hello  
+  guitest:  
+    description: Test command for the Shop GUI 
+    usage: /guitest  
+  godmode:  
+    description: Sets gamemode to Creative  
+    usage: /godmode  
