@@ -12,3 +12,12 @@ commands:
   godmode:  
     description: Sets gamemode to Creative  
     usage: /godmode  
+  display_list:
+    description: Displays a list of players (placeholder)  
+    usage: /display_list  
+  add_item:
+    description: Adds an item to the player list (placeholder)  
+    usage: /add_item [String]  
+  check_sign:
+    description: (Debug) Checks what sign a player has selected.  
+    usage: /check_sign  
