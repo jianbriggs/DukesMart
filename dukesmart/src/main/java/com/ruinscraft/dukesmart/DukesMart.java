@@ -1,37 +1,56 @@
 package com.ruinscraft.dukesmart;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Scoreboard;
 
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 
-import java.util.ArrayList;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashMap;
 
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.Material;
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 
 public class DukesMart extends JavaPlugin {
-	ShopListener sl;
+	private FileConfiguration config = getConfig();
+	private ShopListener sl;
 	
     @Override
     public void onEnable() {
     	this.sl = new ShopListener();
-    	
+    	// check config.yml for database credentials
+    	if(!config.contains("mysql.host") || !config.contains("mysql.port") || !config.contains("mysql.database")
+    	   || !config.contains("mysql.username") || !config.contains("mysql.password")) {
+    		
+    		getLogger().info("[DukesMart] Failed to find database information in config.yml!");
+    		getLogger().info("[DukesMart] Adding default values to config.yml");
+    		
+    		config.addDefault("mysql.host", "localhost");
+    		config.addDefault("mysql.port", 3306);
+    		config.addDefault("mysql.database", "mcatlas");
+    		config.addDefault("mysql.username", "mcatlasdev");
+    		config.addDefault("mysql.password", "password123");
+    		
+    		config.options().copyDefaults(true);
+            saveConfig();
+    		
+    	}
+
     	Bukkit.getPluginManager().registerEvents(this.sl, this);
-    	getLogger().info("DukesMart has been enabled!");
+    	
+    	getLogger().info("[DukesMart] has been enabled!");
+    	
     	for (Player player : Bukkit.getServer().getOnlinePlayers()) {
     	    //playerList.put(player.getName(), playerData(player));
     	}
@@ -39,14 +58,24 @@ public class DukesMart extends JavaPlugin {
 
     @Override
     public void onDisable() {
-    	getLogger().info("DukesMart has been disabled!");
+    	getLogger().info("[DukesMart] has been disabled!");
     }
-
+    
+    public String shopGuiPad(String message) {
+    	message += ChatColor.RESET;
+    	
+    	while(message.length() < 32) {
+    		message += " ";
+    	}
+    	
+    	return message;
+    }
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
         Player player = (Player) sender;
-        if(cmd.getName().equalsIgnoreCase("hello")){
-            player.sendMessage(ChatColor.AQUA + "Hello, world!");
-            return true;
+        if(cmd.getName().equalsIgnoreCase("clear")){
+    	    player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+    		player.sendMessage("(Debug) Scoreboard removed.");
+    		return true;
         }
         else if(cmd.getName().equalsIgnoreCase("goodbye")) {
         	player.sendMessage(ChatColor.RED + "It's been nice knowing ya...");
@@ -59,7 +88,7 @@ public class DukesMart extends JavaPlugin {
         	return true;
         }
         else if(cmd.getName().equalsIgnoreCase("display_list")){
-        	HashMap<String,String> map = this.sl.getSelectedMap();
+        	HashMap<String, Location> map = this.sl.getSelectedMap();
         	for(String key : map.keySet()) {
         		player.sendMessage(ChatColor.GRAY + key + " : " + map.get(key));
         	}
@@ -67,13 +96,35 @@ public class DukesMart extends JavaPlugin {
         }
         else if(cmd.getName().equalsIgnoreCase("check_sign")) {
 			String playerUID = player.getUniqueId().toString();
-			HashMap<String, String> signMap = this.sl.getSelectedMap();
+			HashMap<String, Location> signMap = this.sl.getSelectedMap();
 			if( signMap.containsKey(playerUID)) {
-				String value = signMap.get(playerUID);
+				Location value = signMap.get(playerUID);
 				
 				player.sendMessage(ChatColor.GRAY + "Debug: selected sign at coords: " + value);
 			}
         	return true;
+        }
+        else if(cmd.getName().equalsIgnoreCase("database_check")) {
+        	String url = "jdbc:mysql://localhost:3306/mcatlas?useSSL=false";
+            String user = "mcatlas_dev";
+            String password = "ruinscraft1138$";
+            
+            String query = "SELECT VERSION()";
+
+            try (Connection con = DriverManager.getConnection(url, user, password);
+                Statement st = con.createStatement();
+                ResultSet rs = st.executeQuery(query)) {
+
+                if (rs.next()) {
+                    player.sendMessage(ChatColor.LIGHT_PURPLE + rs.getString(1));
+                }
+
+            } catch (SQLException ex) {
+            	player.sendMessage(ChatColor.RED + "Error with database.");
+            	player.sendMessage(ex.getMessage());
+            } 
+            
+            return true;
         }
 
         return false;

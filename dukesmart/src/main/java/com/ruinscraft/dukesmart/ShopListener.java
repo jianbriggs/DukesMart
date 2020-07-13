@@ -2,15 +2,14 @@ package com.ruinscraft.dukesmart;
 
 import java.util.HashMap;
 
-import org.bukkit.GameMode;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.block.Sign;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -23,17 +22,16 @@ import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Scoreboard;
 
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
 
 public class ShopListener implements Listener{
-	private HashMap<String, String> signSelectedMap = new HashMap<String, String>();
+	private HashMap<String, Location> signSelectedMap = new HashMap<String, Location>();
 	
-	public HashMap<String, String> getSelectedMap(){
+	public HashMap<String, Location> getSelectedMap(){
 		return this.signSelectedMap;
 	}
 	
@@ -52,8 +50,7 @@ public class ShopListener implements Listener{
         int earned_gold = 128;
         player.sendMessage(pluginName() + ChatColor.WHITE + "Hello, " + ChatColor.AQUA + player.getName() + ChatColor.WHITE
         				   + ". Since last login, you have made " + ChatColor.GOLD + earned_gold + ChatColor.WHITE + " gold!");
-        
-        this.signSelectedMap.putIfAbsent(player.getUniqueId().toString(), "Example Sign");
+       
     }
     
     /*
@@ -93,13 +90,14 @@ public class ShopListener implements Listener{
     	Block  block  = evt.getBlock();
     	
     	if(block.getState() instanceof Sign) {
-    		player.sendMessage(player.getName() + " placed a sign.");
+    		//player.sendMessage(player.getName() + " placed a sign.");
     	}
     }
     
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent evt) {
         Player player = evt.getPlayer();
+        String playerUID = player.getUniqueId().toString();
         
         if (evt.getAction() == Action.RIGHT_CLICK_BLOCK) {
         	Block clickedBlock = evt.getClickedBlock();
@@ -122,88 +120,100 @@ public class ShopListener implements Listener{
                 		 * to sell.
                 		 */
                 		if(signLines[1].equals(ChatColor.WHITE + "?")) {
-                			player.sendMessage("Sign does not have an item.");
+
                 			ItemStack itemToSell = player.getInventory().getItemInMainHand();
+                			XMaterial itemMat = XMaterial.matchXMaterial(itemToSell);
                 			
                 			// if player has something in hand (and is owner) set the shop's item
-                			if(!itemToSell.getType().equals(Material.AIR) && playerIsOwner(player, signLines[3])) {
-	                			s.setLine(1, itemToSell.getType().name());
+                			if(!(itemToSell.getType() == Material.AIR) && playerIsOwner(player, signLines[3])) {
+	                			s.setLine(1, itemMat.name());
 	                			s.update();
 	                			player.sendMessage(ChatColor.AQUA + "Shop item set. Place items to sell in chest below sign.");
                 			}
                 		}
-                		else if(playerIsOwner(player, signLines[3])){
-                			String playerUID = player.getUniqueId().toString();
-                			if( this.signSelectedMap.containsKey(playerUID)) {
-                				this.signSelectedMap.put(playerUID, s.getLocation().toString());
+                		else{
+                			Location shopLocation = getShopLocation(s);
+                			Location playerSelected = this.signSelectedMap.get(playerUID);
+                			
+                			// On right-click the player "selects" the shop.
+                			// In the map, store location of the shop the player has selected.
+                			if( playerSelected == null || !playerSelected.equals(shopLocation)) {
+                				this.signSelectedMap.put(playerUID, shopLocation);
                 				player.sendMessage(pluginName() + ChatColor.GREEN + " Shop selected.");
+                				
+                				// TODO: Implement this
+                				displayShopInformation(player, shopLocation);
                 			}
-                		}
-                		else {
-		                	// get the material to buy
-		                	// note that this will eventually be replaced with an ItemStack
-		                	// from the DB
-		                	Material blockToBuy = Material.getMaterial(signLines[1].toUpperCase());
-
-		                	// get the quantity and gold cost
-		                	String[] transaction = signLines[2].split(" ");
-		                	int quantity = Integer.parseInt(transaction[0]);
-		                	int cost = Integer.parseInt(transaction[2].substring(1));
-		                	
-		                	if(blockToBuy != null) {
-		                		// check if the chest inventory contains the item
-		                		boolean hasStock = false;
-		                		
-		                		if(storeStock instanceof DoubleChestInventory) {
-		                			player.sendMessage("Store is double chest");
-		                			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
-		                			if(dci.getLeftSide().contains(blockToBuy, quantity)) {
-		                				storeStock = dci.getLeftSide();
-		                				hasStock = true;
-		                			}
-		                			else if(dci.getRightSide().contains(blockToBuy, quantity)) {
-		                				storeStock = dci.getRightSide();
-		                				hasStock = true;
-		                			}
-		                		}
-		                		else{
-		                			player.sendMessage("Store is single chest");
-		                			if(storeStock.contains(blockToBuy, quantity)) {
-		                				hasStock = true;
-		                			}
-		                		}
-		                		
-		                		if(hasStock) {
-		                			PlayerInventory pi = player.getInventory();
-		                			
-		                			if(pi.containsAtLeast(new ItemStack(Material.GOLD_INGOT), cost)){
-			                			// convert material to ItemStack
-			                			ItemStack item = new ItemStack(blockToBuy);
-			                			item.setAmount(quantity);
+                			else if( playerSelected.equals(shopLocation)){
+			                	// get the material to buy
+			                	// note that this will eventually be replaced with an ItemStack
+			                	// from the DB
+			                	
+	                			//Material blockToBuy = Material.getMaterial(signLines[1].toUpperCase());
+	                			String materialNameFix = signLines[1].toUpperCase().replace(" ", "_");;
+	                			
+			                	XMaterial blockToBuy = XMaterial.valueOf(materialNameFix);
+	
+			                	// get the quantity and gold cost
+			                	String[] transaction = signLines[2].split(" ");
+			                	int quantity = Integer.parseInt(transaction[0]);
+			                	int cost = Integer.parseInt(transaction[2].substring(1));
+			                	
+			                	if(blockToBuy != null) {
+			                		// check if the chest inventory contains the item
+			                		boolean hasStock = false;
+			                		
+			                		if(storeStock instanceof DoubleChestInventory) {
+			                			player.sendMessage("Store is double chest");
+			                			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
+			                			if(dci.getLeftSide().contains(blockToBuy.parseMaterial(), quantity)) {
+			                				storeStock = dci.getLeftSide();
+			                				hasStock = true;
+			                			}
+			                			else if(dci.getRightSide().contains(blockToBuy.parseMaterial(), quantity)) {
+			                				storeStock = dci.getRightSide();
+			                				hasStock = true;
+			                			}
+			                		}
+			                		else{
+			                			player.sendMessage("Store is single chest");
+			                			if(storeStock.contains(blockToBuy.parseMaterial(), quantity)) {
+			                				hasStock = true;
+			                			}
+			                		}
+			                		
+			                		if(hasStock) {
+			                			PlayerInventory pi = player.getInventory();
 			                			
-			                			// remove said items from the chest
-			                			storeStock.removeItem(item);
-			                			
-			                			pi.removeItem(new ItemStack(Material.GOLD_INGOT, cost));
-			                			// and put into the player's inventory
-			                			pi.addItem(item);
-		
-			                			player.sendMessage("You purchased " + ChatColor.AQUA + quantity + " "
-			                								+ blockToBuy + ChatColor.WHITE + " for " + ChatColor.GOLD + cost + " gold.");
-		                			}
-		                			else {
-		                				sendError(player, "Sorry, you do not have enough gold to buy.");
-		                			}
-		                		}
-		                		else {
-		                			sendError(player, "Sorry, this shop is out of stock. Come back later.");
-		                		}
-		                	}
-		                	else {
-		                		sendError(player, "Oops! I don't recognize this item. The shop owner should fix this.");
-		                	}
-                		}
-	                }
+			                			if(pi.containsAtLeast(new ItemStack(Material.GOLD_INGOT), cost)){
+				                			// convert material to ItemStack
+				                			ItemStack item = blockToBuy.parseItem();
+				                			item.setAmount(quantity);
+				                			
+				                			// remove said items from the chest
+				                			storeStock.removeItem(item);
+				                			
+				                			pi.removeItem(new ItemStack(Material.GOLD_INGOT, cost));
+				                			// and put into the player's inventory
+				                			pi.addItem(item);
+			
+				                			player.sendMessage("You purchased " + ChatColor.AQUA + quantity + " "
+				                								+ blockToBuy + ChatColor.WHITE + " for " + ChatColor.GOLD + cost + " gold.");
+			                			}
+			                			else {
+			                				sendError(player, "Sorry, you do not have enough gold to buy.");
+			                			}
+			                		}
+			                		else {
+			                			sendError(player, "Sorry, this shop is out of stock. Come back later.");
+			                		}
+			                	}
+			                	else {
+			                		sendError(player, "Oops! I don't recognize this item. The shop owner should fix this.");
+			                	}
+	                		}
+		                }
+                	}
                 	else {
                 		player.sendMessage("Debug: Sign is not a shop");
                 	}
@@ -211,8 +221,68 @@ public class ShopListener implements Listener{
             }
         }
     }
+    
+    /**
+     * Displays a Scoreboard containing information related to
+     * the shop the player has selected.
+     * @param shopLocation Location of the selected shop sign
+     */
+    private void displayShopInformation(Player player, Location shopLocation) {
 
-    /*
+    	Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
+    	Objective obj = board.registerNewObjective("DukesMart", "Shop", ChatColor.GOLD + "[" + ChatColor.DARK_GREEN + "DukesMart" + ChatColor.GOLD + "]");
+        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+        
+        obj.getScore(shopGuiPad(ChatColor.WHITE + "ianfreakingb's Shop")).setScore( 20 );
+        obj.getScore(shopGuiPad(" ")).setScore(19);
+        
+        obj.getScore(shopGuiPad("" + ChatColor.BOLD + ChatColor.RED + ChatColor.UNDERLINE + "For sale")).setScore( 18 );
+        obj.getScore(shopGuiPad(" ")).setScore(17);
+        
+        obj.getScore(shopGuiPad(ChatColor.AQUA + "Diamond Sword")).setScore( 16 );
+        obj.getScore(shopGuiPad(" ")).setScore(15);
+        
+        obj.getScore(shopGuiPad(ChatColor.ITALIC + "- Mending")).setScore( 14 );
+        obj.getScore(shopGuiPad(" ")).setScore(13);
+        
+        obj.getScore(shopGuiPad("" + ChatColor.BOLD + ChatColor.RED + ChatColor.UNDERLINE + "Quantity")).setScore( 12 );
+        obj.getScore(shopGuiPad(" ")).setScore(11);
+        
+        obj.getScore(shopGuiPad(ChatColor.WHITE + "1")).setScore( 10 );   
+        obj.getScore(shopGuiPad(" ")).setScore(9);
+        
+        obj.getScore(shopGuiPad("" + ChatColor.BOLD + ChatColor.RED + ChatColor.UNDERLINE + "Cost")).setScore( 8 );
+        obj.getScore(shopGuiPad(" ")).setScore(7);
+        
+        obj.getScore(shopGuiPad(ChatColor.WHITE + "24 gold")).setScore( 6 );
+        obj.getScore(shopGuiPad(" ")).setScore(5);
+        
+        obj.getScore(shopGuiPad(" ")).setScore(4);
+
+        obj.getScore(shopGuiPad(ChatColor.WHITE + "To buy, right click sign.")).setScore(3);
+
+        player.setScoreboard(board);    
+	}
+    
+    private String shopGuiPad(String message) {
+    	message += ChatColor.RESET;
+    	
+    	while(message.length() < 32) {
+    		message += " ";
+    	}
+    	
+    	return message;
+    }
+	/**
+     * Returns the Location data of a shop sign
+     * @param s Sign representing a shop
+     * @return Sign location data
+     */
+    private Location getShopLocation(Sign s) {
+		return s.getLocation();
+	}
+
+	/*
      * Helper methods below this comment.
      */
     
@@ -294,32 +364,6 @@ public class ShopListener implements Listener{
     	else{
     		return false;
     	}
-    }
-    
-    /*
-     * This method will likely not be used, or changed entirely,
-     * so consider it a placeholder.
-     */
-    private boolean confirmTransaction(Player p, ItemStack item) {
-    	TextComponent prompt = new TextComponent( "You are about to purchase:" );
-    	
-    	TextComponent itemText = new TextComponent( "" + item.getAmount() + "x " + item.getType());
-    	itemText.setColor(ChatColor.AQUA);
-    	
-    	TextComponent acceptButton = new TextComponent( "[ ACCEPT ]" );
-    	acceptButton.setColor( ChatColor.GREEN );
-    	
-    	TextComponent cancelButton = new TextComponent( "[ CANCEL ]" );
-    	cancelButton.setColor( ChatColor.RED );
-    	
-    	//subComponent.setHoverEvent( new HoverEvent( HoverEvent.Action.SHOW_TEXT, new ComponentBuilder( "Click me!" ).create() ) );
-    	//subComponent.setClickEvent( new ClickEvent( ClickEvent.Action.));
-    	prompt.addExtra(itemText);
-    	prompt.addExtra( acceptButton );
-    	prompt.addExtra( cancelButton );
-    	p.spigot().sendMessage( prompt );
-    	
-    	return true;
     }
     
     /**

@@ -2,10 +2,11 @@ name: DukesMart
 main: com.ruinscraft.dukesmart.DukesMart
 version: 0.1
 author: Ruinscraft LLC
+api-version: 1.13
 commands:
-  hello:  
-    description: This prints out "Hello, world!"  
-    usage: /hello  
+  clear:  
+    description: (Debug) Clears any open DukeSmart scoreboard  
+    usage: /clear  
   guitest:  
     description: Test command for the Shop GUI 
     usage: /guitest  
@@ -21,3 +22,6 @@ commands:
   check_sign:
     description: (Debug) Checks what sign a player has selected.  
     usage: /check_sign  
+  database_check:
+    description: (Debug) As the name suggests, checks the DB.
+    usage: /database_check  
