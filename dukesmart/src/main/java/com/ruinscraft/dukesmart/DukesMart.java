@@ -26,9 +26,15 @@ public class DukesMart extends JavaPlugin {
 	private FileConfiguration config = getConfig();
 	private ShopListener sl;
 	
+	private String mySQLhost;
+	private String mySQLport;
+	private String mySQLdatabase;
+	private String mySQLusername;
+	private String mySQLpassword;
+	
     @Override
     public void onEnable() {
-    	this.sl = new ShopListener();
+    	
     	// check config.yml for database credentials
     	if(!config.contains("mysql.host") || !config.contains("mysql.port") || !config.contains("mysql.database")
     	   || !config.contains("mysql.username") || !config.contains("mysql.password")) {
@@ -46,10 +52,19 @@ public class DukesMart extends JavaPlugin {
             saveConfig();
     		
     	}
-
+    	
+    	// load MySQL database info
+    	this.mySQLhost = config.getString("mysql.host");
+    	this.mySQLport = config.getString("mysql.port");
+    	this.mySQLdatabase = config.getString("mysql.database");
+    	this.mySQLusername = config.getString("mysql.username");
+    	this.mySQLpassword = config.getString("mysql.password");
+    	
+    	this.sl = new ShopListener(mySQLhost, mySQLport, mySQLdatabase, mySQLusername, mySQLpassword, this);
+    	
     	Bukkit.getPluginManager().registerEvents(this.sl, this);
     	
-    	getLogger().info("[DukesMart] has been enabled!");
+    	getLogger().info("DukesMart has been enabled!");
     	
     	for (Player player : Bukkit.getServer().getOnlinePlayers()) {
     	    //playerList.put(player.getName(), playerData(player));
@@ -105,13 +120,11 @@ public class DukesMart extends JavaPlugin {
         	return true;
         }
         else if(cmd.getName().equalsIgnoreCase("database_check")) {
-        	String url = "jdbc:mysql://localhost:3306/mcatlas?useSSL=false";
-            String user = "mcatlas_dev";
-            String password = "ruinscraft1138$";
-            
+        	
+        	String url = "jdbc:mysql://" + this.mySQLhost + ":" + this.mySQLport + "/" + this.mySQLdatabase + "?useSSL=true";
             String query = "SELECT VERSION()";
 
-            try (Connection con = DriverManager.getConnection(url, user, password);
+            try (Connection con = DriverManager.getConnection(url, this.mySQLusername, this.mySQLpassword);
                 Statement st = con.createStatement();
                 ResultSet rs = st.executeQuery(query)) {
 
