@@ -24,13 +24,8 @@ import org.bukkit.entity.Player;
 
 public class DukesMart extends JavaPlugin {
 	private FileConfiguration config = getConfig();
+	private MySQLHelper mySQLHelper;
 	private ShopListener sl;
-	
-	private String mySQLhost;
-	private String mySQLport;
-	private String mySQLdatabase;
-	private String mySQLusername;
-	private String mySQLpassword;
 	
     @Override
     public void onEnable() {
@@ -53,14 +48,9 @@ public class DukesMart extends JavaPlugin {
     		
     	}
     	
-    	// load MySQL database info
-    	this.mySQLhost = config.getString("mysql.host");
-    	this.mySQLport = config.getString("mysql.port");
-    	this.mySQLdatabase = config.getString("mysql.database");
-    	this.mySQLusername = config.getString("mysql.username");
-    	this.mySQLpassword = config.getString("mysql.password");
+    	setupMySQLHelper();
     	
-    	this.sl = new ShopListener(mySQLhost, mySQLport, mySQLdatabase, mySQLusername, mySQLpassword, this);
+    	this.sl = new ShopListener(this);
     	
     	Bukkit.getPluginManager().registerEvents(this.sl, this);
     	
@@ -75,16 +65,7 @@ public class DukesMart extends JavaPlugin {
     public void onDisable() {
     	getLogger().info("[DukesMart] has been disabled!");
     }
-    
-    public String shopGuiPad(String message) {
-    	message += ChatColor.RESET;
-    	
-    	while(message.length() < 32) {
-    		message += " ";
-    	}
-    	
-    	return message;
-    }
+
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
         Player player = (Player) sender;
         if(cmd.getName().equalsIgnoreCase("clear")){
@@ -119,27 +100,22 @@ public class DukesMart extends JavaPlugin {
 			}
         	return true;
         }
-        else if(cmd.getName().equalsIgnoreCase("database_check")) {
-        	
-        	String url = "jdbc:mysql://" + this.mySQLhost + ":" + this.mySQLport + "/" + this.mySQLdatabase + "?useSSL=true";
-            String query = "SELECT VERSION()";
-
-            try (Connection con = DriverManager.getConnection(url, this.mySQLusername, this.mySQLpassword);
-                Statement st = con.createStatement();
-                ResultSet rs = st.executeQuery(query)) {
-
-                if (rs.next()) {
-                    player.sendMessage(ChatColor.LIGHT_PURPLE + rs.getString(1));
-                }
-
-            } catch (SQLException ex) {
-            	player.sendMessage(ChatColor.RED + "Error with database.");
-            	player.sendMessage(ex.getMessage());
-            } 
-            
-            return true;
-        }
 
         return false;
+    }
+    
+    public void setupMySQLHelper() {
+    	// load MySQL database info
+    	String host     = config.getString("mysql.host");
+    	int    port     = config.getInt("mysql.port");
+    	String database = config.getString("mysql.database");
+    	String username = config.getString("mysql.username");
+    	String password = config.getString("mysql.password");
+    	
+    	this.mySQLHelper = new MySQLHelper(host, port, database, username, password);
+    }
+    
+    public MySQLHelper getMySQLHelper() {
+    	return this.mySQLHelper;
     }
 }

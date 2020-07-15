@@ -51,27 +51,12 @@ import com.google.gson.Gson;
 import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
-	private DukesMart dmref;
-	
-	private String mySQLhost;
-	private String mySQLport;
-	private String mySQLdatabase;
-	private String mySQLusername;
-	private String mySQLpassword;
-	private String mySQLurl;
+	private DukesMart plugin;
 	
 	private HashMap<String, Location> signSelectedMap = new HashMap<String, Location>();
 	
-    public ShopListener(String host, String port, String database, String username, String password, DukesMart dmref) {
-    	this.dmref = dmref;
-    	
-    	this.mySQLhost = host;
-    	this.mySQLport = port;
-    	this.mySQLdatabase = database;
-    	this.mySQLusername = username;
-    	this.mySQLpassword = password;
-    	
-    	this.mySQLurl = "jdbc:mysql://" + this.mySQLhost + ":" + this.mySQLport + "/" + this.mySQLdatabase + "?useSSL=true";
+    public ShopListener(DukesMart plugin) {
+    	this.plugin = plugin;
     }
     
 	public HashMap<String, Location> getSelectedMap(){
@@ -173,8 +158,10 @@ public class ShopListener implements Listener{
                 			if(!(itemToSell.getType() == Material.AIR) && playerIsOwner(player, signLines[3])) {
 	                			s.setLine(1, itemMat.name());
 	                			s.update();
-	                			registerShop(player, s, itemToSell);
-	                			player.sendMessage(ChatColor.AQUA + "Shop item set. Place items to sell in chest below sign.");
+	                			
+	                			this.plugin.getMySQLHelper().registerShop(player, s, itemToSell).thenAccept(result -> {
+	                				player.sendMessage(ChatColor.AQUA + "Shop item set. Place items to sell in chest below sign.");
+	                			});	
                 			}
                 		}
                 		else{
@@ -277,30 +264,22 @@ public class ShopListener implements Listener{
     		Sign s = (Sign) block.getState();
     		
     		if(signIsShop(s)) {
-    			
-    			BukkitRunnable runnable = new BukkitRunnable() {
-					@Override
-					public void run() {
-					
-						// TODO Auto-generated method stub
-						Location shopLocation = s.getLocation();
-						Shop shop = getShopFromLocation(shopLocation);
-						
+    			evt.setCancelled(true);
+				// TODO Auto-generated method stub
+				Location shopLocation = s.getLocation();
+				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
+					if(shop != null) {
 						// If player is the owner, delete it.
 						// For testing purposes we are going to negate it
 						// to see the other effect.
-						if(false) {
-							evt.setCancelled(true);
+						if(player.getUniqueId().toString().compareTo(shop.getOwner()) == 0) {
 							player.sendMessage(pluginName() + ChatColor.GREEN + "You are the owner of this shop.");		
 						}
 						else {
-							evt.setCancelled(true);
 							player.sendMessage(pluginName() + ChatColor.RED + "You cannot remove a shop that you do not own.");	
 						}
-						
 					}
-    			};
-    			runnable.runTaskAsynchronously(this.dmref);
+				});
     		}
     		else {
     			return;
@@ -308,155 +287,16 @@ public class ShopListener implements Listener{
     	}
     }
     
-    public Shop getShopFromLocation(Location loc){
-    	// separate world/coordinate data
-    	String world = loc.getWorld().getName();
-    	short x = (short) loc.getX();
-    	byte  y = (byte)  loc.getY();
-    	short z = (short) loc.getZ();
-    	
-    	String url      = this.mySQLurl;
-    	String username = this.mySQLusername;
-    	String password = this.mySQLpassword;
-
-    	try{
-    		Connection con = DriverManager.getConnection(url, username, password);
-    		String query = "SELECT (player_uuid, shop_name, item_serialization) FROM dukesmart_shops WHERE world = ?, location_x = ?, location_y = ?, location_z = ?";
-
-            PreparedStatement ps = con.prepareStatement(query);
-            ps.setString(1, world);
-            ps.setShort(2, x);
-            ps.setShort(3, y);
-            ps.setShort(4, z);
-            
-            ResultSet rs = ps.executeQuery();
-            rs.next();
-            
-            String s_uuid = rs.getString(0);
-            String s_name = rs.getString(1);
-            ItemStack item = itemFrom64(rs.getString(2));
-            
-            Shop shop = new Shop(s_uuid, s_name, world, x, y, z);
-            shop.setItem(item);
-            
-            return shop;
-        }
-    	catch (SQLException ex) {
-    		ex.getMessage();
-        } catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-    	
-    	return null;
-    }
-    /**
-     * Registers a player created shop sign into the database.
-     * 
-     * @param player Player who created shop sign
-     * @param shopSign Shop sign with player input data
-     * @param item ItemStack representing item player would like to sell.
-     * @return True if shop successfully registered in database,
-     *         False if database could not save information.
-     */
     
-    private void registerShop(Player player, Sign shopSign, ItemStack item) {
-    	String url = this.mySQLurl;
-    	String username = this.mySQLusername;
-    	String password = this.mySQLpassword;
-    	DukesMart dmref = this.dmref;
-    	BukkitRunnable runnable = new BukkitRunnable() {
-			@Override
-			public void run() {
-		    	try{
-		    		Connection con = DriverManager.getConnection(url, username, password);
-		    		String query = "INSERT INTO dukesmart_shops (player_uuid, shop_name, world, location_x, location_y, location_z,"
-		    				       + "material, item_serialization, item_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
-		    		
-		    		// inputs
-		    		Location shopLocation = shopSign.getLocation();
-		    		String player_uuid = player.getUniqueId().toString();
-		    		String shop_name = player.getName() + "'s Shop";
-		    		String world = shopLocation.getWorld().getName();
-		    		short loc_x = (short) shopLocation.getX();
-		    		byte loc_y = (byte) shopLocation.getY();
-		    		short loc_z = (short) shopLocation.getZ();
-		    		String material = item.getType().name();
-		    		
-		    		item.setAmount(1);
-
-		    		Map<String, Object> item_serial = item.serialize();
-		    		String item_serial_base64 = itemTo64(item);
-		    		
-		    		MessageDigest md = MessageDigest.getInstance("MD5");
-		    	    md.update(item_serial.toString().getBytes());
-		    	    byte[] digest = md.digest();
-
-		    		String hash = Base64.getEncoder().encodeToString(digest);
-		    		
-		            PreparedStatement ps = con.prepareStatement(query);
-		            ps.setString(1, player_uuid);
-		            ps.setString(2, shop_name);
-		            ps.setString(3, world);
-		            ps.setShort(4, loc_x);
-		            ps.setShort(5, loc_y);
-		            ps.setShort(6, loc_z);
-		            ps.setString(7, material);
-		            ps.setString(8, item_serial_base64);
-		            ps.setString(9, hash);
-		            
-		            ps.executeUpdate();
-		            player.sendMessage("(Debug) Shop added to database");
-
-		        }
-		    	catch (SQLException ex) {
-		    		player.sendMessage(ex.getMessage());
-		        } catch (NoSuchAlgorithmException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-    	};
-    	
-    	runnable.runTaskAsynchronously(dmref);
-	}
     
-    private String itemTo64(ItemStack stack) throws IllegalStateException {
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream);
-            dataOutput.writeObject(stack);
 
-            // Serialize that array
-            dataOutput.close();
-            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
-        }
-        catch (Exception e) {
-            throw new IllegalStateException("Unable to save item stack.", e);
-        }
-    }
-    
-    private static ItemStack itemFrom64(String data) throws IOException {
-        try {
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
-            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
-            try {
-                return (ItemStack) dataInput.readObject();
-            } finally {
-                dataInput.close();
-            }
-        }
-        catch (ClassNotFoundException e) {
-            throw new IOException("Unable to decode class type.", e);
-        }
-    }
 	/**
      * Displays a Scoreboard containing information related to
      * the shop the player has selected.
      * @param shopLocation Location of the selected shop sign
      */
     private void displayShopInformation(Player player, Location shopLocation) {
-
+    	/*
     	Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
     	Objective obj = board.registerNewObjective("DukesMart", "Shop", ChatColor.GOLD + "[" + ChatColor.DARK_GREEN + "DukesMart" + ChatColor.GOLD + "]");
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
@@ -489,7 +329,8 @@ public class ShopListener implements Listener{
 
         obj.getScore(shopGuiPad(ChatColor.WHITE + "To buy, right click sign.")).setScore(3);
 
-        player.setScoreboard(board);    
+        player.setScoreboard(board);  
+        */  
 	}
     
     private String shopGuiPad(String message) {
