@@ -19,6 +19,7 @@ import org.bukkit.Location;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
@@ -102,7 +103,7 @@ public class MySQLHelper {
         	Shop shop = null;
         	
             try (Connection connection = getConnection()) {
-            	String sql = "SELECT player_uuid, shop_name, item_serialization FROM dukesmart_shops"
+            	String sql = "SELECT player_uuid, shop_name, item_serialization, quantity, price FROM dukesmart_shops"
             			     + " WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
             	
                 try (PreparedStatement query = connection.prepareStatement(sql)) {
@@ -115,11 +116,11 @@ public class MySQLHelper {
                         result.next();
                     	String s_uuid  = result.getString(1);
                         String s_name  = result.getString(2);
- 
+                        short  s_quantity = result.getShort(4);
+                        int    s_price = result.getInt(5);
 						try {
 							ItemStack item = itemFrom64(result.getString(3));
-							shop = new Shop(s_uuid, s_name, world, x, y, z);
-	                        shop.setItem(item);
+							shop = new Shop(s_uuid, s_name, world, x, y, z, item, s_quantity, s_price);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -146,8 +147,9 @@ public class MySQLHelper {
     		Boolean result = false;
 	    	try(Connection connection = getConnection()){
 	    		String sql = "INSERT INTO dukesmart_shops (player_uuid, shop_name, world, location_x, location_y, location_z,"
-	    				   + " material, item_serialization, item_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"
-	    				   + " ON DUPLICATE KEY UPDATE player_uuid = ?, shop_name = ?, material = ?, item_serialization = ?, item_hash = ?";
+	    				   + " material, quantity, price, item_serialization, item_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	    				   + " ON DUPLICATE KEY UPDATE player_uuid = ?, shop_name = ?, material = ?, quantity = ?, price = ?,"
+	    				   + " item_serialization = ?, item_hash = ?";
 	    		
 	    		// inputs
 	    		Location shopLocation = shopSign.getLocation();
@@ -159,8 +161,12 @@ public class MySQLHelper {
 	    		short loc_z = (short) shopLocation.getZ();
 	    		String material = item.getType().name();
 	    		
+	    		String[] tokens = shopSign.getLine(2).split(" ");
+	    		int quantity = Integer.parseInt(tokens[0]);
+	    		int price = Integer.parseInt(tokens[2].substring(1));
 	    		item.setAmount(1);
-	
+	    		// TODO: set item durability to 100%
+	    		
 	    		Map<String, Object> item_serial = item.serialize();
 	    		String item_serial_base64 = itemTo64(item);
 	    		
@@ -178,15 +184,19 @@ public class MySQLHelper {
 		            query.setShort(5, loc_y);
 		            query.setShort(6, loc_z);
 		            query.setString(7, material);
-		            query.setString(8, item_serial_base64);
-		            query.setString(9, hash);
+		            query.setInt(8, quantity);
+		            query.setInt(9, price);
+		            query.setString(10, item_serial_base64);
+		            query.setString(11, hash);
 		            
 		            // duplicate
-		            query.setString(10, player_uuid);
-		            query.setString(11, shop_name);
-		            query.setString(12, material);
-		            query.setString(13, item_serial_base64);
-		            query.setString(14, hash);
+		            query.setString(12, player_uuid);
+		            query.setString(13, shop_name);
+		            query.setString(14, material);
+		            query.setInt(15, quantity);
+		            query.setInt(16, price);
+		            query.setString(17, item_serial_base64);
+		            query.setString(18, hash);
 
 		            if(query.executeUpdate() > 0) {
 		            	result = true;
