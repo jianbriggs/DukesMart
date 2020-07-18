@@ -34,8 +34,8 @@ public class DukesMart extends JavaPlugin {
     	if(!config.contains("mysql.host") || !config.contains("mysql.port") || !config.contains("mysql.database")
     	   || !config.contains("mysql.username") || !config.contains("mysql.password")) {
     		
-    		getLogger().info("[DukesMart] Failed to find database information in config.yml!");
-    		getLogger().info("[DukesMart] Adding default values to config.yml");
+    		getLogger().info("Failed to find database information in config.yml!");
+    		getLogger().info("Adding default values to config.yml");
     		
     		config.addDefault("mysql.host", "localhost");
     		config.addDefault("mysql.port", 3306);

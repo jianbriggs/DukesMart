@@ -93,7 +93,6 @@ public class MySQLHelper {
     }
 	
 	public CompletableFuture<Shop> getShopFromLocation(Location location){
-		
         return CompletableFuture.supplyAsync(() -> {
         	// separate world/coordinate data
         	String world = location.getWorld().getName();
@@ -103,7 +102,7 @@ public class MySQLHelper {
         	Shop shop = null;
         	
             try (Connection connection = getConnection()) {
-            	String sql = "SELECT player_uuid, shop_name, item_serialization, quantity, price FROM dukesmart_shops"
+            	String sql = "SELECT shop_id, player_uuid, shop_name, item_serialization, quantity, price FROM dukesmart_shops"
             			     + " WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
             	
                 try (PreparedStatement query = connection.prepareStatement(sql)) {
@@ -114,13 +113,14 @@ public class MySQLHelper {
                     
                     try (ResultSet result = query.executeQuery()) {
                         result.next();
-                    	String s_uuid  = result.getString(1);
-                        String s_name  = result.getString(2);
-                        short  s_quantity = result.getShort(4);
-                        int    s_price = result.getInt(5);
+                        int s_id = result.getInt(1);
+                    	String s_uuid  = result.getString(2);
+                        String s_name  = result.getString(3);
+                        short  s_quantity = result.getShort(5);
+                        int    s_price = result.getInt(6);
 						try {
-							ItemStack item = itemFrom64(result.getString(3));
-							shop = new Shop(s_uuid, s_name, world, x, y, z, item, s_quantity, s_price);
+							ItemStack item = itemFrom64(result.getString(4));
+							shop = new Shop(s_id, s_uuid, s_name, world, x, y, z, item, s_quantity, s_price);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -216,6 +216,104 @@ public class MySQLHelper {
 	    	return result;
     	});
 	}
+    
+    /**
+     * Facilitates transaction data on buyer purchase.
+     * 
+     * @param buyer Player who made purchased
+     * @param shop Shop Player purchased from
+     * @return True if process was able to complete
+     */
+    public CompletableFuture<Boolean> processTransaction(Player buyer, Shop shop){
+        return CompletableFuture.supplyAsync(() -> {
+        	boolean transactionComplete = false;
+        	
+        	String sql_addGoldToShopLedger = "UPDATE dukesmart_ledgers SET income = income + ?, total_earned = total_earned + ?"
+        								   + " WHERE player_uuid = ?";
+        	
+        	String sql_logTransaction = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
+        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(sql_logTransaction)) {
+                	
+                    query.setString(1, buyer.getUniqueId().toString());
+                    query.setInt(2, shop.getID());
+                    
+                    if( query.executeUpdate() > 0 ) {
+                    	transactionComplete = true;
+                    }
+                }
+                
+                try (PreparedStatement query = connection.prepareStatement(sql_addGoldToShopLedger)){
+                	query.setInt(1, shop.getPrice());
+                	query.setInt(2, shop.getPrice());
+                	query.setString(3, shop.getOwner());
+                	
+                	if( query.executeUpdate() > 0 ){
+                		transactionComplete = true;
+                	}
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return transactionComplete;
+        });
+    }
+    
+    public CompletableFuture<Boolean> setupLedger(Player player){
+        return CompletableFuture.supplyAsync(() -> {
+        	String sql_createPlayerLedger = "INSERT INTO dukesmart_ledgers (player_uuid, income, total_earned) VALUES(?, 0, 0)"
+        								  + " ON DUPLICATE KEY UPDATE income = income, total_earned = total_earned";
+        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(sql_createPlayerLedger)) {
+                	
+                    query.setString(1, player.getUniqueId().toString());
+
+                    if( query.executeUpdate() > 0 ) {
+                        return true;
+                    }
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return false;
+        });
+    }
+    
+    public CompletableFuture<Integer> getPlayerIncomeToRedeem(Player player){
+        return CompletableFuture.supplyAsync(() -> {
+        	String sql_getPlayerIncome = "SELECT income FROM dukesmart_ledgers WHERE player_uuid = ?";
+        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(sql_getPlayerIncome)) {
+                	
+                    query.setString(1, player.getUniqueId().toString());
+
+                    try (ResultSet result = query.executeQuery()) {
+                    	result.last();
+                    	if(result.getRow() > 0) {
+                    		return result.getInt(1);
+                    	}
+                    	else {
+                    		return 0;
+                    	}
+                    }
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return 0;
+        });
+    }
     
     private String itemTo64(ItemStack stack) throws IllegalStateException {
         try {

@@ -1,21 +1,6 @@
 package com.ruinscraft.dukesmart;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -43,18 +28,16 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.util.io.BukkitObjectInputStream;
-import org.bukkit.util.io.BukkitObjectOutputStream;
-
-import com.google.gson.Gson;
 
 import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
+	
+	private final String SHOP_SIGN_NO_ITEM = "" + ChatColor.WHITE + "?";
+	
 	private DukesMart plugin;
 	
 	private HashMap<String, Location> signSelectedMap = new HashMap<String, Location>();
@@ -78,11 +61,14 @@ public class ShopListener implements Listener{
      */
     public void onPlayerJoin(PlayerJoinEvent evt) {
         Player player = evt.getPlayer(); // The player who joined
+        
+        this.plugin.getMySQLHelper().getPlayerIncomeToRedeem(player).thenAccept(income -> {
+        	if( income > 0  && player.isOnline()) {
+	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + income + ChatColor.YELLOW
+	            				   + " gold." + ChatColor.GOLD + " /shop redeem");
+        	}
+        });
 
-        int earned_gold = 128;
-        player.sendMessage(pluginName() + ChatColor.WHITE + "Hello, " + ChatColor.AQUA + player.getName() + ChatColor.WHITE
-        				   + ". Since last login, you have made " + ChatColor.GOLD + earned_gold + ChatColor.WHITE + " gold!");
-       
     }
     
     /*
@@ -138,7 +124,6 @@ public class ShopListener implements Listener{
                 
                 if(block.getState() instanceof Chest || block.getState() instanceof DoubleChest) {
                 	Chest chest = (Chest) block.getState();
-                	Inventory storeStock = chest.getInventory();
                 	
                 	// get store information from sign
                 	String[] signLines = sign.getLines();
@@ -159,9 +144,14 @@ public class ShopListener implements Listener{
 	                			sign.setLine(1, itemMat.name());
 	                			sign.update();
 	                			
-	                			this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(result -> {
-	                				player.sendMessage(ChatColor.AQUA + "Shop item set. Place items to sell in chest below sign.");
-	                			});	
+	                			this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
+	                				if(result) {
+	                					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
+	    	                				player.sendMessage(ChatColor.AQUA + "Shop item set. Place items to sell in chest below sign.");
+	    	                			});	
+	                				}
+	                			});
+
                 			}
                 		}
                 		else{
@@ -188,87 +178,93 @@ public class ShopListener implements Listener{
 			                	// get the material to buy
 			                	// note that this will eventually be replaced with an ItemStack
 			                	// from the DB
-			                	
-	                			//Material blockToBuy = Material.getMaterial(signLines[1].toUpperCase());
-	                			String materialNameFix = signLines[1].toUpperCase().replace(" ", "_");;
-	                			
-			                	XMaterial blockToBuy = XMaterial.valueOf(materialNameFix);
-	
-			                	// get the quantity and gold cost
-			                	String[] transaction = signLines[2].split(" ");
-			                	int quantity = Integer.parseInt(transaction[0]);
-			                	int cost = Integer.parseInt(transaction[2].substring(1));
-			                	
-			                	if(blockToBuy != null) {
+			                	this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
+			                		ItemStack itemToBuy = shop.getItem();
+			                		//itemToBuy.setAmount(shop.getQuantity());
+			                		Inventory storeStock = chest.getInventory();
+			                		//itemToBuy.setAmount(shop.getQuantity());
+			                		
 			                		// check if the chest inventory contains the item
 			                		boolean hasStock = false;
-			                		
+				                		
 			                		if(storeStock instanceof DoubleChestInventory) {
 			                			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
-			                			if(dci.getLeftSide().contains(blockToBuy.parseMaterial(), quantity)) {
+			                			if(dci.getLeftSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
 			                				storeStock = dci.getLeftSide();
 			                				hasStock = true;
 			                			}
-			                			else if(dci.getRightSide().contains(blockToBuy.parseMaterial(), quantity)) {
+			                			else if(dci.getRightSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
 			                				storeStock = dci.getRightSide();
 			                				hasStock = true;
 			                			}
 			                		}
 			                		else{
-			                			if(storeStock.contains(blockToBuy.parseMaterial(), quantity)) {
+			                			if(storeStock.containsAtLeast(itemToBuy, shop.getQuantity())) {
 			                				hasStock = true;
 			                			}
 			                		}
-			                		
-			                		if(hasStock) {
-			                			PlayerInventory pi = player.getInventory();
-			                			
-			                			if(pi.containsAtLeast(new ItemStack(Material.GOLD_INGOT), cost)){
-				                			// convert material to ItemStack
-				                			ItemStack item = blockToBuy.parseItem();
-				                			item.setAmount(quantity);
-				                			
-				                			// remove said items from the chest
-				                			storeStock.removeItem(item);
-				                			
-				                			pi.removeItem(new ItemStack(Material.GOLD_INGOT, cost));
-				                			// and put into the player's inventory
-				                			pi.addItem(item);
-			
-				                			player.sendMessage("You purchased " + ChatColor.AQUA + quantity + " "
-				                								+ blockToBuy + ChatColor.WHITE + " for " + ChatColor.GOLD + cost + " gold.");
+				                		
+			                		if(hasStock) {   			
+			                			if(playerCanStoreItem(player, itemToBuy, shop.getQuantity())) {
+			                				player.updateInventory();
+			                				PlayerInventory pi = player.getInventory();
+			                				
+				                			if(pi.containsAtLeast(new ItemStack(Material.GOLD_INGOT), shop.getPrice())){
+					                			itemToBuy.setAmount(shop.getQuantity());
+					                			
+					                			// remove said items from the chest
+					                			storeStock.removeItem(itemToBuy);
+					                			
+					                			pi.removeItem(new ItemStack(Material.GOLD_INGOT, shop.getPrice()));
+					                			// and put into the player's inventory
+					                			pi.addItem(itemToBuy);
+					                			
+					                			this.plugin.getMySQLHelper().processTransaction(player, shop).thenAccept(result -> {
+						                			if(player.isOnline()) {
+						                				player.sendMessage("You purchased " + ChatColor.AQUA + shop.getQuantity() + " "
+						                						+ itemToBuy.getType() + ChatColor.WHITE + " for " + ChatColor.GOLD + shop.getPrice() + " gold.");
+						                			}		
+					                			});
+				                			}
+				                			else {
+				                				sendError(player, "Sorry, you do not have enough gold to buy.");
+				                			}
 			                			}
 			                			else {
-			                				sendError(player, "Sorry, you do not have enough gold to buy.");
+			                				sendError(player, "You do not have enough free space for this purchase.");
 			                			}
 			                		}
 			                		else {
 			                			sendError(player, "Sorry, this shop is out of stock. Come back later.");
 			                		}
-			                	}
-			                	else {
-			                		sendError(player, "Oops! I don't recognize this item. The shop owner should fix this.");
-			                	}
+			                	});
 	                		}
 		                }
-                	}
-                	else {
-                		player.sendMessage("Debug: Sign is not a shop");
                 	}
                 }
             }
         }
     }
-    
-    private boolean shopSignIsValid(String[] signLines) {
-		// TODO Auto-generated method stub
-		return false;
+        
+	private boolean playerCanStoreItem(Player player, ItemStack itemToBuy, short quantity) {
+		PlayerInventory inv = player.getInventory();
+		int maxStackSize = itemToBuy.getMaxStackSize();
+
+		for(ItemStack item : inv.getContents()) {
+			if(item == null || item.getType() == Material.AIR) {
+				continue;
+			}
+			// check if the slot's amount + quantity is
+			// less than or equal to 64 (full stack)
+			else if(item.isSimilar(itemToBuy) && item.getAmount() + quantity <= maxStackSize) {
+				return true;
+			}
+		}
+		
+		// otherwise, return if there's a free, empty slot
+		return inv.firstEmpty() >= 0;
 	}
-    
-    private boolean shopSignHasNoItem(Sign sign) {
-    	return sign.getLine(1).equals(ChatColor.WHITE + "?");
-    }
-    
+
 	@EventHandler
     public void onBlockBreak(BlockBreakEvent evt) {
     	Player player = evt.getPlayer();
@@ -296,6 +292,10 @@ public class ShopListener implements Listener{
     			return;
     		}
     	}
+    }
+    
+    private boolean shopSignHasNoItem(Sign sign) {
+    	return sign.getLine(1).equals(SHOP_SIGN_NO_ITEM);
     }
     
     /**
@@ -390,8 +390,10 @@ public class ShopListener implements Listener{
      * @param p Player to send message to
      * @param message Message to output
      */
-    private void sendError(Player p, String message) {
-    	p.sendMessage(ChatColor.RED + message);
+    private void sendError(Player player, String message) {
+    	if(player.isOnline()) {
+    		player.sendMessage(ChatColor.RED + message);
+    	}
     }
     
     /**
