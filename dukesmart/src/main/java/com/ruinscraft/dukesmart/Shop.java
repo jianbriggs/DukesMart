@@ -89,4 +89,24 @@ public class Shop {
 	public void setPrice(int price) {
 		this.price = price;
 	}
+	
+	public int getXLocation() {
+		return this.loc_x;
+	}
+	
+	public int getYLocation() {
+		return this.loc_y;
+	}
+	
+	public int getZLocation() {
+		return this.loc_z;
+	}
+	
+	public String getWorld() {
+		return this.world;
+	}
+	
+	public boolean playerOwnsShop(Player player) {
+		return player.getUniqueId().toString().compareTo(this.owner_uuid) == 0;
+	}
 }

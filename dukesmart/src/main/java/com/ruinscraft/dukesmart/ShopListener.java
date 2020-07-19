@@ -19,14 +19,15 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
@@ -37,6 +38,7 @@ import net.md_5.bungee.api.ChatColor;
 public class ShopListener implements Listener{
 	
 	private final String SHOP_SIGN_NO_ITEM = "" + ChatColor.WHITE + "?";
+	private final String SHOP_SIGN_IDENTIFIER = "" + ChatColor.DARK_PURPLE + "[Buy]";
 	
 	private DukesMart plugin;
 	
@@ -65,12 +67,20 @@ public class ShopListener implements Listener{
         this.plugin.getMySQLHelper().getPlayerIncomeToRedeem(player).thenAccept(income -> {
         	if( income > 0  && player.isOnline()) {
 	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + income + ChatColor.YELLOW
-	            				   + " gold." + ChatColor.GOLD + " /shop redeem");
+	            				   + " gold from chest shops." + ChatColor.GOLD + " /shop redeem");
         	}
         });
 
     }
     
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent evt) {
+    	Player player = evt.getPlayer();
+    	
+    	if(signSelectedMap.containsKey(player.getUniqueId().toString())) {
+    		signSelectedMap.remove(player.getUniqueId().toString());
+    	}
+    }
     /*
      * This will handle shop creation if a player
      * places a sign with proper values.
@@ -78,37 +88,22 @@ public class ShopListener implements Listener{
     @EventHandler
     public void onSignChangeEvent(SignChangeEvent evt) {
     	Player player = evt.getPlayer();
-    	Block b = evt.getBlock();
+    	Block block = evt.getBlock();
     	
-    	if(b.getState() instanceof Sign) {
+    	if(block.getState() instanceof Sign) {
+    		Sign sign = (Sign) block.getState();
     		
-    		if(shopIsValid(evt.getLines())) {
-    			
-    		}
-	    	if(evt.getLine(0).equalsIgnoreCase("[Buy]") && validateShopPrice(evt.getLine(2))) {
+	    	if(validateShopSignEntry(evt.getLines())) {
 
-	    		evt.setLine(0, ChatColor.DARK_PURPLE + "[Buy]");
-    			evt.setLine(1, ChatColor.WHITE + "?");
+	    		evt.setLine(0, SHOP_SIGN_IDENTIFIER);
+    			evt.setLine(1, SHOP_SIGN_NO_ITEM);
 	    		evt.setLine(3, ChatColor.DARK_BLUE + player.getName());
 
 	    		player.sendMessage(ChatColor.AQUA + "Sign shop created! Now right-click the sign with an item to assign it.");
 	    	}
     	}
     }
-    
-    /*
-     * This event may end up unused.
-     */
-    @EventHandler
-    public void onBlockPlaceEvent(BlockPlaceEvent evt) {
-    	Player player = evt.getPlayer();
-    	Block  block  = evt.getBlock();
-    	
-    	if(block.getState() instanceof Sign) {
-    		//player.sendMessage(player.getName() + " placed a sign.");
-    	}
-    }
-    
+
     //TODO: refactor the shit out of this
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent evt) {
@@ -118,7 +113,7 @@ public class ShopListener implements Listener{
         if (evt.getAction() == Action.RIGHT_CLICK_BLOCK) {
         	Block clickedBlock = evt.getClickedBlock();
         	
-            if ( clickedBlock.getType() == Material.WALL_SIGN || clickedBlock.getType() == Material.SIGN){
+            if (blockIsSign(clickedBlock)){
                 Sign sign = (Sign) clickedBlock.getState();
                 Block block = clickedBlock.getRelative(BlockFace.DOWN, 1);
                 
@@ -141,7 +136,12 @@ public class ShopListener implements Listener{
                 			
                 			// if player has something in hand (and is owner) set the shop's item
                 			if(!(itemToSell.getType() == Material.AIR) && playerIsOwner(player, signLines[3])) {
-	                			sign.setLine(1, itemMat.name());
+                				if(itemToSell.getItemMeta().hasDisplayName()) {
+                					sign.setLine(1, ChatColor.ITALIC + itemToSell.getItemMeta().getDisplayName());
+                				}
+                				else {
+                					sign.setLine(1, materialPrettyPrint(itemMat.parseMaterial()));
+                				}
 	                			sign.update();
 	                			
 	                			this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
@@ -165,13 +165,15 @@ public class ShopListener implements Listener{
                 				player.sendMessage(ChatColor.GREEN + " Shop selected.");
                 				
                 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(result ->{
-                					//if(result != null && player.isOnline()) {
-                					player.sendMessage("(Debug) Shop gotten from location");
-                					
-                					Bukkit.getScheduler().runTask(this.plugin, () -> {
-                						displayShopInformation(player, result);
-                					});
-                					//}
+                					if(result != null && player.isOnline()) {
+                						// TODO: DEBUG output
+	                					player.sendMessage("(Debug) Shop gotten from location");
+	                					////
+	                					
+	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
+	                						displayShopInformation(player, result);
+	                					});
+                					}
                 				});			
                 			}
                 			else if( playerSelected.equals(shopLocation)){
@@ -180,6 +182,7 @@ public class ShopListener implements Listener{
 			                	// from the DB
 			                	this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
 			                		ItemStack itemToBuy = shop.getItem();
+			                		
 			                		//itemToBuy.setAmount(shop.getQuantity());
 			                		Inventory storeStock = chest.getInventory();
 			                		//itemToBuy.setAmount(shop.getQuantity());
@@ -222,7 +225,7 @@ public class ShopListener implements Listener{
 					                			this.plugin.getMySQLHelper().processTransaction(player, shop).thenAccept(result -> {
 						                			if(player.isOnline()) {
 						                				player.sendMessage("You purchased " + ChatColor.AQUA + shop.getQuantity() + " "
-						                						+ itemToBuy.getType() + ChatColor.WHITE + " for " + ChatColor.GOLD + shop.getPrice() + " gold.");
+						                						+ materialPrettyPrint(itemToBuy.getType()) + ChatColor.WHITE + " for " + ChatColor.GOLD + shop.getPrice() + " gold.");
 						                			}		
 					                			});
 				                			}
@@ -245,7 +248,68 @@ public class ShopListener implements Listener{
             }
         }
     }
-        
+    
+	@EventHandler
+    public void onBlockBreak(BlockBreakEvent evt) {
+    	Player player = evt.getPlayer();
+    	Block block = evt.getBlock();
+    	
+    	if(blockIsSign(block)) {
+    		Sign sign = (Sign) block.getState();
+    		
+    		if(signIsShop(sign)) {
+    			evt.setCancelled(true);
+				Location shopLocation = sign.getLocation();
+				
+				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
+					if(shop != null) {
+						// If player is the owner, delete it.
+						if(shop.playerOwnsShop(player)) {
+							this.plugin.getMySQLHelper().removeShop(player, shop).thenAccept(result -> {
+								if(result && player.isOnline()) {
+									player.sendMessage(ChatColor.AQUA + "Shop removed.");
+									Bukkit.getScheduler().runTask(this.plugin, () -> {
+                						block.breakNaturally();
+                					});
+								}
+								else if(player.isOnline()){
+									sendError(player, "Unable to remove shop. Try again later.");
+								}
+							});
+							
+						}
+						else {
+							sendError(player, "You cannot remove a shop that you do not own.");	
+						}
+					}
+					else {
+						Bukkit.getScheduler().runTask(this.plugin, () -> {
+    						block.breakNaturally();
+    					});
+					}
+				});
+    		}
+    		else {
+    			return;
+    		}
+    	}
+    }
+	
+    private boolean blockIsSign(Block block) {
+    	return block.getType() == Material.WALL_SIGN || block.getType() == Material.SIGN;
+    }
+    
+    private String materialPrettyPrint(Material material) {
+    	String[] words = material.toString().split("_");
+    	String output = "";
+    	
+    	for( String word : words) {
+    		output += word.substring(0,1).toUpperCase() + word.substring(1).toLowerCase() + " ";
+    	}
+    	
+    	return output;
+    }
+    
 	private boolean playerCanStoreItem(Player player, ItemStack itemToBuy, short quantity) {
 		PlayerInventory inv = player.getInventory();
 		int maxStackSize = itemToBuy.getMaxStackSize();
@@ -264,52 +328,10 @@ public class ShopListener implements Listener{
 		// otherwise, return if there's a free, empty slot
 		return inv.firstEmpty() >= 0;
 	}
-
-	@EventHandler
-    public void onBlockBreak(BlockBreakEvent evt) {
-    	Player player = evt.getPlayer();
-    	Block block = evt.getBlock();
-    	
-    	if(block.getType() == Material.WALL_SIGN || block.getType() == Material.SIGN) {
-    		Sign s = (Sign) block.getState();
-    		
-    		if(signIsShop(s)) {
-    			evt.setCancelled(true);
-				Location shopLocation = s.getLocation();
-				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
-					if(shop != null) {
-						// If player is the owner, delete it.
-						if(playerIsOwner(player, shop)) {
-							player.sendMessage(ChatColor.GREEN + "You are the owner of this shop.");		
-						}
-						else {
-							player.sendMessage(ChatColor.RED + "You cannot remove a shop that you do not own.");	
-						}
-					}
-				});
-    		}
-    		else {
-    			return;
-    		}
-    	}
-    }
     
     private boolean shopSignHasNoItem(Sign sign) {
     	return sign.getLine(1).equals(SHOP_SIGN_NO_ITEM);
     }
-    
-    /**
-     * Checks if a player is the owner of a specific shop
-     * by comparing UUIDs.
-     * 
-     * @param player Player interacting with shop
-     * @param shop Shop to check against
-     * @return True if Player and Shop owner UUIDs match, False otherwise
-     */
-    private boolean playerIsOwner(Player player, Shop shop) {
-    	return player.getUniqueId().toString().compareTo(shop.getOwner()) == 0;
-    }
-    
 
 	/**
      * Displays a Scoreboard containing information related to
@@ -327,22 +349,24 @@ public class ShopListener implements Listener{
         
         ArrayList<String> shopInfoElements = new ArrayList<String>();
         shopInfoElements.add(shop.getName());
+        shopInfoElements.add("" + ChatColor.BOLD);
         shopInfoElements.add("" + ChatColor.DARK_GREEN + ChatColor.BOLD + "For sale");
         if(meta.hasDisplayName()) {
         	shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\"");
         }
-        shopInfoElements.add("" + item.getType().name());
+        shopInfoElements.add("" + materialPrettyPrint(item.getType()));
         for(Entry<Enchantment, Integer> entry : itemEnchantments.entrySet()) {
         	String enchantmentName = entry.getKey().getKey().toString().split(":")[1];
         	enchantmentName = enchantmentName.substring(0,1).toUpperCase() + enchantmentName.substring(1);
         	
         	shopInfoElements.add(" - " + ChatColor.ITALIC + enchantmentName + " " + entry.getValue());
         }
-        shopInfoElements.add(" ");
+        shopInfoElements.add("" + ChatColor.BOLD);
+        
         shopInfoElements.add("" + ChatColor.DARK_GREEN + ChatColor.BOLD + "Quantity: " + ChatColor.WHITE + shop.getQuantity());
-        shopInfoElements.add(" ");
+        shopInfoElements.add("" + ChatColor.BOLD);
         shopInfoElements.add("" + ChatColor.DARK_GREEN + ChatColor.BOLD + "Cost....: " + ChatColor.WHITE + shop.getPrice() + " gold");
-        shopInfoElements.add(" ");
+        shopInfoElements.add("" + ChatColor.BOLD);
         shopInfoElements.add("" + ChatColor.YELLOW + "To purchase, right click again.");
 
         int counter = shopInfoElements.size();
@@ -459,26 +483,24 @@ public class ShopListener implements Listener{
     /**
      * Checks if a shop is valid. This is used to distinct
      * other player made signs from shop signs.
-     * @param lines Lines printed on the shop sign
+     * 
+     * A shop sign is validated if the first line contains "[Buy]"
+     * and the price/quantity information follows the appropriate
+     * structure.
+     * 
+     * @param sign Sign created by player
      * @return True if sign represents a valid shop, false otherwise.
      */
-    private boolean shopIsValid(String[] lines) {
-    	if(lines[0].equals(ChatColor.DARK_PURPLE + "[Buy]")) {
-    		return true;
-    	}
-    	else{
-    		return false;
-    	}
+    private boolean validateShopSignEntry(String[] lines) {
+    	return lines[0].equalsIgnoreCase("[Buy]") && validateShopPrice(lines[2]);
     }
-    
     /**
      * Checks if a sign object is a shop.
      * @param s Sign to check
      * @return True if sign, False otherwise
      */
-    private boolean signIsShop(Sign s) {
-    	String[] lines = s.getLines();
-    	return lines[0].equals(ChatColor.DARK_PURPLE + "[Buy]");
+    private boolean signIsShop(Sign sign) {
+    	return sign.getLine(0).equals(SHOP_SIGN_IDENTIFIER) && validateShopPrice(sign.getLine(2));
     }
     /**
      * Checks if a player is the owner of a shop.

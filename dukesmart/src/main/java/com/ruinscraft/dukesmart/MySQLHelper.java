@@ -19,8 +19,6 @@ import org.bukkit.Location;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
 
@@ -134,7 +132,41 @@ public class MySQLHelper {
             return shop;
         });
 	}
-	
+
+	public CompletableFuture<Boolean> removeShop(Player player, Shop shop){
+        return CompletableFuture.supplyAsync(() -> {
+        	// separate world/coordinate data
+        	String world = shop.getWorld();
+        	short x = (short) shop.getXLocation();
+        	byte  y = (byte)  shop.getYLocation();
+        	short z = (short) shop.getZLocation();
+        	
+        	if(shop.playerOwnsShop(player)) {
+	            try (Connection connection = getConnection()) {
+	            	String sql = "DELETE FROM dukesmart_shops WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ? AND player_uuid = ?";
+	            	
+	                try (PreparedStatement query = connection.prepareStatement(sql)) {
+	                    query.setString(1, world);
+	                    query.setShort(2, x);
+	                    query.setShort(3, y);
+	                    query.setShort(4, z);
+	                    query.setString(5, player.getUniqueId().toString());
+	                    
+	                    if(query.executeUpdate() > 0 ) {
+	                    	return true;
+	                    }
+	                    else {
+	                    	return false;
+	                    }
+	                }
+	            } catch (SQLException e) {
+	                e.printStackTrace();
+	            }
+        	}
+
+        	return false;
+        });
+	}
 	/**
      * Registers a player created shop sign into the database.
      * 

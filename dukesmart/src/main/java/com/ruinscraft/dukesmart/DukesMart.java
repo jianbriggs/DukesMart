@@ -55,15 +55,11 @@ public class DukesMart extends JavaPlugin {
     	Bukkit.getPluginManager().registerEvents(this.sl, this);
     	
     	getLogger().info("DukesMart has been enabled!");
-    	
-    	for (Player player : Bukkit.getServer().getOnlinePlayers()) {
-    	    //playerList.put(player.getName(), playerData(player));
-    	}
     }
 
     @Override
     public void onDisable() {
-    	getLogger().info("[DukesMart] has been disabled!");
+    	getLogger().info("DukesMart has been disabled!");
     }
 
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
