@@ -91,8 +91,6 @@ public class ShopListener implements Listener{
     	Block block = evt.getBlock();
     	
     	if(block.getState() instanceof Sign) {
-    		Sign sign = (Sign) block.getState();
-    		
 	    	if(validateShopSignEntry(evt.getLines())) {
 
 	    		evt.setLine(0, SHOP_SIGN_IDENTIFIER);
@@ -135,7 +133,7 @@ public class ShopListener implements Listener{
                 			XMaterial itemMat = XMaterial.matchXMaterial(itemToSell);
                 			
                 			// if player has something in hand (and is owner) set the shop's item
-                			if(!(itemToSell.getType() == Material.AIR) && playerIsOwner(player, signLines[3])) {
+                			if(!(itemToSell.getType().equals(XMaterial.AIR.parseMaterial())) && playerIsOwner(player, signLines[3])) {
                 				if(itemToSell.getItemMeta().hasDisplayName()) {
                 					sign.setLine(1, ChatColor.ITALIC + itemToSell.getItemMeta().getDisplayName());
                 				}
@@ -189,24 +187,15 @@ public class ShopListener implements Listener{
 			                		
 			                		// check if the chest inventory contains the item
 			                		boolean hasStock = false;
-				                		
-			                		if(storeStock instanceof DoubleChestInventory) {
-			                			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
-			                			if(dci.getLeftSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
-			                				storeStock = dci.getLeftSide();
-			                				hasStock = true;
-			                			}
-			                			else if(dci.getRightSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
-			                				storeStock = dci.getRightSide();
-			                				hasStock = true;
-			                			}
+			                		
+			                		if(itemToBuy.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
+			                			ItemStack writable_book = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
+			                			hasStock = shopChestContainsItem(storeStock, writable_book, shop);
 			                		}
-			                		else{
-			                			if(storeStock.containsAtLeast(itemToBuy, shop.getQuantity())) {
-			                				hasStock = true;
-			                			}
+			                		else {
+			                			hasStock = shopChestContainsItem(storeStock, itemToBuy, shop);
 			                		}
-				                		
+			                		
 			                		if(hasStock) {   			
 			                			if(playerCanStoreItem(player, itemToBuy, shop.getQuantity())) {
 			                				player.updateInventory();
@@ -216,7 +205,14 @@ public class ShopListener implements Listener{
 					                			itemToBuy.setAmount(shop.getQuantity());
 					                			
 					                			// remove said items from the chest
-					                			storeStock.removeItem(itemToBuy);
+					                			if(itemToBuy.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
+					                				ItemStack writable_book = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
+					                				writable_book.setAmount(shop.getQuantity());
+					                				storeStock.removeItem(writable_book);
+					                			}
+					                			else {
+					                				storeStock.removeItem(itemToBuy);
+					                			}
 					                			
 					                			pi.removeItem(new ItemStack(Material.GOLD_INGOT, shop.getPrice()));
 					                			// and put into the player's inventory
@@ -249,6 +245,27 @@ public class ShopListener implements Listener{
         }
     }
     
+	private boolean shopChestContainsItem(Inventory storeStock, ItemStack itemToBuy, Shop shop) {
+		if(storeStock instanceof DoubleChestInventory) {
+			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
+			if(dci.getLeftSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
+				storeStock = dci.getLeftSide();
+				return true;
+			}
+			else if(dci.getRightSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
+				storeStock = dci.getRightSide();
+				return true;
+			}
+		}
+		else{
+			if(storeStock.containsAtLeast(itemToBuy, shop.getQuantity())) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+
 	@EventHandler
     public void onBlockBreak(BlockBreakEvent evt) {
     	Player player = evt.getPlayer();
@@ -296,7 +313,7 @@ public class ShopListener implements Listener{
     }
 	
     private boolean blockIsSign(Block block) {
-    	return block.getType() == Material.WALL_SIGN || block.getType() == Material.SIGN;
+    	return block.getType().equals(Material.WALL_SIGN) || block.getType().equals(Material.SIGN);
     }
     
     private String materialPrettyPrint(Material material) {
@@ -315,7 +332,7 @@ public class ShopListener implements Listener{
 		int maxStackSize = itemToBuy.getMaxStackSize();
 
 		for(ItemStack item : inv.getContents()) {
-			if(item == null || item.getType() == Material.AIR) {
+			if(item == null || item.getType().equals(XMaterial.AIR.parseMaterial())) {
 				continue;
 			}
 			// check if the slot's amount + quantity is
@@ -353,6 +370,23 @@ public class ShopListener implements Listener{
         shopInfoElements.add("" + ChatColor.DARK_GREEN + ChatColor.BOLD + "For sale");
         if(meta.hasDisplayName()) {
         	shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\"");
+        }
+        
+        if(item.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
+        	player.sendMessage("(Debug) Item is a written book");
+        	BookMeta bookmeta = (BookMeta) meta;
+        	
+        	if(bookmeta.hasTitle()) {
+        		shopInfoElements.add("" + ChatColor.YELLOW + ChatColor.ITALIC + "\"" + bookmeta.getTitle() + "\"");
+        	}
+        	
+        	if(bookmeta.hasAuthor()) {
+        		shopInfoElements.add("" + ChatColor.YELLOW + ChatColor.ITALIC + "by " + bookmeta.getAuthor());
+        	}
+        	
+        	if(bookmeta.hasPages()) {
+        		shopInfoElements.add("" + ChatColor.YELLOW + ChatColor.ITALIC  + bookmeta.getPageCount() + " pages");
+        	}
         }
         shopInfoElements.add("" + materialPrettyPrint(item.getType()));
         for(Entry<Enchantment, Integer> entry : itemEnchantments.entrySet()) {
