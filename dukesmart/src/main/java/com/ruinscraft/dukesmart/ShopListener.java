@@ -13,6 +13,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.block.Sign;
+import org.bukkit.block.banner.Pattern;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -27,8 +28,11 @@ import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.MapMeta;
+import org.bukkit.map.MapView;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
@@ -133,9 +137,15 @@ public class ShopListener implements Listener{
                 			XMaterial itemMat = XMaterial.matchXMaterial(itemToSell);
                 			
                 			// if player has something in hand (and is owner) set the shop's item
-                			if(!(itemToSell.getType().equals(XMaterial.AIR.parseMaterial())) && playerIsOwner(player, signLines[3])) {
+                			if(!(itemToSell.getType().equals(XMaterial.AIR.parseMaterial())) && playerIsOwner(player, signLines[3])) {                				
                 				if(itemToSell.getItemMeta().hasDisplayName()) {
                 					sign.setLine(1, ChatColor.ITALIC + itemToSell.getItemMeta().getDisplayName());
+                				}
+                				else if(itemToSell.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
+                					BookMeta bookmeta = (BookMeta) itemToSell.getItemMeta();
+                					if(bookmeta.hasTitle()) {
+                						sign.setLine(1, ChatColor.ITALIC + bookmeta.getTitle());
+                					}
                 				}
                 				else {
                 					sign.setLine(1, materialPrettyPrint(itemMat.parseMaterial()));
@@ -144,6 +154,11 @@ public class ShopListener implements Listener{
 	                			
 	                			this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
 	                				if(result) {
+	                    				// if player has a writable book, strip any unfinished writing from it
+	                					if(itemToSell.getType().equals(XMaterial.WRITABLE_BOOK.parseMaterial())) {
+	                    					itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
+	                    				}
+	                    				
 	                					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
 	    	                				player.sendMessage(ChatColor.AQUA + "Shop item set. Place items to sell in chest below sign.");
 	    	                			});	
@@ -365,9 +380,10 @@ public class ShopListener implements Listener{
         ItemMeta  meta = item.getItemMeta();
         
         ArrayList<String> shopInfoElements = new ArrayList<String>();
-        shopInfoElements.add(shop.getName());
-        shopInfoElements.add("" + ChatColor.BOLD);
-        shopInfoElements.add("" + ChatColor.DARK_GREEN + ChatColor.BOLD + "For sale");
+        shopInfoElements.add("" + ChatColor.YELLOW + shop.getName());
+        shopInfoElements.add("" + ChatColor.GRAY + "------------------------------------");
+        shopInfoElements.add("" + ChatColor.RED + ChatColor.BOLD + "For sale");
+        shopInfoElements.add(materialPrettyPrint(item.getType()));
         if(meta.hasDisplayName()) {
         	shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\"");
         }
@@ -377,30 +393,42 @@ public class ShopListener implements Listener{
         	BookMeta bookmeta = (BookMeta) meta;
         	
         	if(bookmeta.hasTitle()) {
-        		shopInfoElements.add("" + ChatColor.YELLOW + ChatColor.ITALIC + "\"" + bookmeta.getTitle() + "\"");
+        		shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + bookmeta.getTitle() + "\"");
         	}
         	
         	if(bookmeta.hasAuthor()) {
-        		shopInfoElements.add("" + ChatColor.YELLOW + ChatColor.ITALIC + "by " + bookmeta.getAuthor());
+        		shopInfoElements.add(" - by " + bookmeta.getAuthor());
         	}
         	
         	if(bookmeta.hasPages()) {
-        		shopInfoElements.add("" + ChatColor.YELLOW + ChatColor.ITALIC  + bookmeta.getPageCount() + " pages");
+        		shopInfoElements.add(" - " + bookmeta.getPageCount() + " pages");
         	}
         }
-        shopInfoElements.add("" + materialPrettyPrint(item.getType()));
+        else if(item.getType().equals(XMaterial.FILLED_MAP.parseMaterial())) {
+        	MapMeta mapmeta = (MapMeta) meta;
+        	
+        	if(mapmeta.hasMapView()) {
+        		MapView mapview = mapmeta.getMapView();
+        		
+        		shopInfoElements.add(" - Map #" + mapview.getId());
+        	}
+        }
+        else if(itemIsBanner(item)) {
+        	BannerMeta bannerMeta = (BannerMeta) item.getItemMeta();
+        	for(Pattern pattern : bannerMeta.getPatterns()) {
+        		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getPattern().name())));
+        	}
+        }
+        
         for(Entry<Enchantment, Integer> entry : itemEnchantments.entrySet()) {
         	String enchantmentName = entry.getKey().getKey().toString().split(":")[1];
         	enchantmentName = enchantmentName.substring(0,1).toUpperCase() + enchantmentName.substring(1);
         	
         	shopInfoElements.add(" - " + ChatColor.ITALIC + enchantmentName + " " + entry.getValue());
-        }
-        shopInfoElements.add("" + ChatColor.BOLD);
-        
-        shopInfoElements.add("" + ChatColor.DARK_GREEN + ChatColor.BOLD + "Quantity: " + ChatColor.WHITE + shop.getQuantity());
-        shopInfoElements.add("" + ChatColor.BOLD);
-        shopInfoElements.add("" + ChatColor.DARK_GREEN + ChatColor.BOLD + "Cost....: " + ChatColor.WHITE + shop.getPrice() + " gold");
-        shopInfoElements.add("" + ChatColor.BOLD);
+        } 
+        shopInfoElements.add("" + ChatColor.RED + ChatColor.BOLD + "Quantity: " + ChatColor.WHITE + shop.getQuantity());
+        shopInfoElements.add("" + ChatColor.RED + ChatColor.BOLD + "Cost: " + ChatColor.WHITE + shop.getPrice() + " gold");
+        shopInfoElements.add("" + ChatColor.GRAY + "------------------------------------");
         shopInfoElements.add("" + ChatColor.YELLOW + "To purchase, right click again.");
 
         int counter = shopInfoElements.size();
@@ -412,6 +440,26 @@ public class ShopListener implements Listener{
         player.setScoreboard(board);
         player.sendMessage("(Debug) Scoreboard display set");
 	}
+    
+    private String truncateText(String message) {
+    	if(message.length() >= 38) {
+    		return message.substring(0, 34) + "...";
+    	}
+    	else {
+    		return message;
+    	}
+    }
+    
+    private String prettyPrint(String message) {
+    	String[] words = message.split("_");
+    	String output = "";
+    	
+    	for( String word : words) {
+    		output += word.substring(0,1).toUpperCase() + word.substring(1).toLowerCase() + " ";
+    	}
+    	
+    	return output;
+    }
     
     private String shopGuiPad(String message) {
     	message += ChatColor.RESET;
@@ -440,7 +488,7 @@ public class ShopListener implements Listener{
      * Make sure to reset the chat color AFTER this method is called.
      */
     private String pluginName() {
-    	return ChatColor.DARK_GREEN + "DukesMart";
+    	return ChatColor.GOLD + "DukesMart";
     }
     
     /**
@@ -545,5 +593,9 @@ public class ShopListener implements Listener{
     private boolean playerIsOwner(Player p, String signname) {
     	//return (ChatColor.DARK_BLUE + p.getName()).equals(ChatColor.DARK_BLUE + signname);
     	return true;
+    }
+    
+    private boolean itemIsBanner(ItemStack item) {
+    	return item != null && item.getType().name().contains("BANNER");
     }
 }
