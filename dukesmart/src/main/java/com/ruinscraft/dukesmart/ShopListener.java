@@ -32,7 +32,10 @@ import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.MapMeta;
+import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.map.MapView;
+import org.bukkit.potion.PotionData;
+import org.bukkit.potion.PotionType;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
@@ -137,19 +140,27 @@ public class ShopListener implements Listener{
                 			XMaterial itemMat = XMaterial.matchXMaterial(itemToSell);
                 			
                 			// if player has something in hand (and is owner) set the shop's item
-                			if(!(itemToSell.getType().equals(XMaterial.AIR.parseMaterial())) && playerIsOwner(player, signLines[3])) {                				
+                			if(!(itemToSell.getType().equals(XMaterial.AIR.parseMaterial())) && playerIsOwner(player, signLines[3])) {
+                				
+                				// Custom/display names
                 				if(itemToSell.getItemMeta().hasDisplayName()) {
                 					sign.setLine(1, ChatColor.ITALIC + itemToSell.getItemMeta().getDisplayName());
                 				}
+                				// Written book names
                 				else if(itemToSell.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
                 					BookMeta bookmeta = (BookMeta) itemToSell.getItemMeta();
                 					if(bookmeta.hasTitle()) {
                 						sign.setLine(1, ChatColor.ITALIC + bookmeta.getTitle());
                 					}
                 				}
+                				// Potion names
+                				else if(itemIsPotion(itemToSell)) {
+                					sign.setLine(1, ChatColor.DARK_AQUA + getPotionName(itemToSell));
+                				}
                 				else {
                 					sign.setLine(1, materialPrettyPrint(itemMat.parseMaterial()));
                 				}
+                				
 	                			sign.update();
 	                			
 	                			this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
@@ -413,6 +424,9 @@ public class ShopListener implements Listener{
         		shopInfoElements.add(" - Map #" + mapview.getId());
         	}
         }
+        else if(itemIsPotion(item)) {
+        	shopInfoElements.add("" + ChatColor.AQUA + getPotionName(item));
+        }
         else if(itemIsBanner(item)) {
         	BannerMeta bannerMeta = (BannerMeta) item.getItemMeta();
         	for(Pattern pattern : bannerMeta.getPatterns()) {
@@ -441,7 +455,9 @@ public class ShopListener implements Listener{
         player.sendMessage("(Debug) Scoreboard display set");
 	}
     
-    private String truncateText(String message) {
+
+
+	private String truncateText(String message) {
     	if(message.length() >= 38) {
     		return message.substring(0, 34) + "...";
     	}
@@ -597,5 +613,24 @@ public class ShopListener implements Listener{
     
     private boolean itemIsBanner(ItemStack item) {
     	return item != null && item.getType().name().contains("BANNER");
+    }
+    
+    private boolean itemIsPotion(ItemStack item) {
+		return item != null && item.getType().name().contains("POTION");
+	}
+    
+    private String getPotionName(ItemStack potion) {
+    	PotionMeta meta = (PotionMeta) potion.getItemMeta();
+    	String name = prettyPrint(meta.getBasePotionData().getType().name());
+    	
+    	if(meta.getBasePotionData().isUpgraded()) {
+    		name += "II";
+    	}
+    	
+    	if(meta.getBasePotionData().isExtended()) {
+    		name += "(Extended)";
+    	}
+    	
+    	return name;
     }
 }
