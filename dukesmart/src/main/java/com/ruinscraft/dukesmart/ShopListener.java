@@ -36,6 +36,7 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.map.MapView;
 import org.bukkit.potion.PotionData;
 import org.bukkit.potion.PotionType;
+import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
@@ -44,12 +45,14 @@ import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
 	
+	private final int HIDE_SHOP_DISPLAY_SECONDS = 10;
 	private final String SHOP_SIGN_NO_ITEM = "" + ChatColor.WHITE + "?";
 	private final String SHOP_SIGN_IDENTIFIER = "" + ChatColor.DARK_PURPLE + "[Buy]";
 	
 	private DukesMart plugin;
 	
 	private HashMap<String, Location> signSelectedMap = new HashMap<String, Location>();
+	private HashMap<Player, BukkitTask> hideDisplayTasks = new HashMap<Player, BukkitTask>();
 	
     public ShopListener(DukesMart plugin) {
     	this.plugin = plugin;
@@ -128,7 +131,9 @@ public class ShopListener implements Listener{
                 	// get store information from sign
                 	String[] signLines = sign.getLines();
 
-                	if(signIsShop(sign)) {        		
+                	if(signIsShop(sign)) {
+                		
+                		updateSign(sign);
                 		/* 
                 		 * if the shop has a white '?' on the 2nd line,
                 		 * that means it has not been set an item/block
@@ -190,10 +195,6 @@ public class ShopListener implements Listener{
                 				
                 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(result ->{
                 					if(result != null && player.isOnline()) {
-                						// TODO: DEBUG output
-	                					player.sendMessage("(Debug) Shop gotten from location");
-	                					////
-	                					
 	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
 	                						displayShopInformation(player, result);
 	                					});
@@ -271,6 +272,23 @@ public class ShopListener implements Listener{
         }
     }
     
+    /**
+     * Updates a sign's text to reflect any changes,
+     * such as item or owner's name
+     * 
+     * @param sign Sign to update
+     */
+	private void updateSign(Sign sign) {
+		Location location = sign.getLocation();
+		this.plugin.getMySQLHelper().getShopFromLocation(location).thenAccept(shop -> {
+			if(shop != null) {
+				// update player name
+				sign.setLine(3, shop.getOwnerName());
+				sign.update();
+			}
+		});
+	}
+
 	private boolean shopChestContainsItem(Inventory storeStock, ItemStack itemToBuy, Shop shop) {
 		if(storeStock instanceof DoubleChestInventory) {
 			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
@@ -382,6 +400,11 @@ public class ShopListener implements Listener{
      * @param shopLocation Location of the selected shop sign
      */
     private void displayShopInformation(Player player, Shop shop) {
+    	if(this.hideDisplayTasks.containsKey(player)) {
+    		this.hideDisplayTasks.get(player).cancel();
+    		this.hideDisplayTasks.replace(player, null);
+    	}
+    	
     	Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
     	Objective obj = board.registerNewObjective("DukesMart", "Shop", pluginName());
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
@@ -452,7 +475,15 @@ public class ShopListener implements Listener{
         }
 
         player.setScoreboard(board);
-        player.sendMessage("(Debug) Scoreboard display set");
+        
+        // Schedule scoreboard to be cleared in 30s
+        if(!this.hideDisplayTasks.containsKey(player)) {
+        	this.hideDisplayTasks.put(player, null);
+        }
+        
+        
+        BukkitTask clear = new HideShopDisplayTask(this.plugin, player).runTaskLater(this.plugin, 20*HIDE_SHOP_DISPLAY_SECONDS);
+        this.hideDisplayTasks.replace(player, clear);
 	}
     
 
