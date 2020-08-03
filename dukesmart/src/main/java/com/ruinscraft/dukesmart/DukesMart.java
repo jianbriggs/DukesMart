@@ -52,6 +52,8 @@ public class DukesMart extends JavaPlugin {
     	
     	this.sl = new ShopListener(this);
     	
+    	this.getCommand("shop").setExecutor(new ShopCommandExecutor(this));
+    	
     	Bukkit.getPluginManager().registerEvents(this.sl, this);
     	
     	getLogger().info("DukesMart has been enabled!");
@@ -62,44 +64,6 @@ public class DukesMart extends JavaPlugin {
     	getLogger().info("DukesMart has been disabled!");
     }
 
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args){
-        Player player = (Player) sender;
-        if(cmd.getName().equalsIgnoreCase("clear")){
-    	    player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-    		player.sendMessage("(Debug) Scoreboard removed.");
-    		return true;
-        }
-        else if(cmd.getName().equalsIgnoreCase("goodbye")) {
-        	player.sendMessage(ChatColor.RED + "It's been nice knowing ya...");
-        	player.damage(10.0);
-        	return true;
-        }
-        else if(cmd.getName().equalsIgnoreCase("godmode")) {
-        	player.setGameMode(GameMode.CREATIVE);
-        	player.sendMessage("Creative mode activated!");
-        	return true;
-        }
-        else if(cmd.getName().equalsIgnoreCase("display_list")){
-        	HashMap<String, Location> map = this.sl.getSelectedMap();
-        	for(String key : map.keySet()) {
-        		player.sendMessage(ChatColor.GRAY + key + " : " + map.get(key));
-        	}
-        	return true;
-        }
-        else if(cmd.getName().equalsIgnoreCase("check_sign")) {
-			String playerUID = player.getUniqueId().toString();
-			HashMap<String, Location> signMap = this.sl.getSelectedMap();
-			if( signMap.containsKey(playerUID)) {
-				Location value = signMap.get(playerUID);
-				
-				player.sendMessage(ChatColor.GRAY + "Debug: selected sign at coords: " + value);
-			}
-        	return true;
-        }
-
-        return false;
-    }
-    
     public void setupMySQLHelper() {
     	// load MySQL database info
     	String host     = config.getString("mysql.host");

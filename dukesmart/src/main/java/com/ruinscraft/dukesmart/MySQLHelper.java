@@ -347,6 +347,33 @@ public class MySQLHelper {
         });
     }
     
+    public CompletableFuture<Boolean> playerRedeemGold(Player player, int amount){
+        return CompletableFuture.supplyAsync(() -> {
+        	String sql_getPlayerIncome = "UPDATE dukesmart_ledgers SET income = income - ? WHERE player_uuid = ?";
+        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(sql_getPlayerIncome)) {
+                	
+                	query.setInt(1, amount);
+                    query.setString(2, player.getUniqueId().toString());
+
+                    if(query.executeUpdate() > 0) {
+                    	return true;
+                    }
+                    else {
+                    	return false;
+                    }
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return false;
+        });
+    }
+    
     private String itemTo64(ItemStack stack) throws IllegalStateException {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

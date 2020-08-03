@@ -46,12 +46,12 @@ import net.md_5.bungee.api.ChatColor;
 public class ShopListener implements Listener{
 	
 	private final int HIDE_SHOP_DISPLAY_SECONDS = 10;
-	private final String SHOP_SIGN_NO_ITEM = "" + ChatColor.WHITE + "?";
-	private final String SHOP_SIGN_IDENTIFIER = "" + ChatColor.DARK_PURPLE + "[Buy]";
+	private final String SHOP_SIGN_NO_ITEM      = "" + ChatColor.WHITE + "?";
+	private final String SHOP_SIGN_IDENTIFIER   = "" + ChatColor.DARK_PURPLE + "[Buy]";
 	
 	private DukesMart plugin;
 	
-	private HashMap<String, Location> signSelectedMap = new HashMap<String, Location>();
+	private HashMap<String, Location>   signSelectedMap  = new HashMap<String, Location>();
 	private HashMap<Player, BukkitTask> hideDisplayTasks = new HashMap<Player, BukkitTask>();
 	
     public ShopListener(DukesMart plugin) {
