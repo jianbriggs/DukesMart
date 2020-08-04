@@ -1,8 +1,6 @@
 package com.ruinscraft.dukesmart;
 
 import java.util.HashMap;
-import java.util.Map;
-
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,12 +15,12 @@ public class ShopCommandExecutor implements CommandExecutor{
 	private final DukesMart plugin;
 	
 	private String[] commandHelp =
-		{
-			ChatColor.GOLD + "----------------[ DukesMart ]----------------",
-			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " redeem " + ChatColor.GRAY + ": Redeem your gold",
-			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " edit [name/price/amount] " + ChatColor.GRAY + ": Edit your shop's attributes. You must"
-					+ "have a shop selected first."
-		};
+	{
+		ChatColor.GOLD + "----------------[ DukesMart ]----------------",
+		ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " redeem " + ChatColor.GRAY + ": Redeem your gold",
+		ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " edit [name/price/amount] [value]" + ChatColor.GRAY + ": Edit your shop's attributes. You must"
+				+ "have a shop selected first."
+	};
 	
 	public ShopCommandExecutor(DukesMart plugin) {
 		this.plugin = plugin;
@@ -44,9 +42,8 @@ public class ShopCommandExecutor implements CommandExecutor{
 			}
 			else {
 				if(player.isOnline()) {
-					
-					
 					player.sendMessage(commandHelp);
+					return true;
 				}
 			}
 		}
@@ -54,8 +51,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 	}
 	
 	private boolean redeemGold(Player player) {
-		if(player.isOnline()) {
-			
+		if(player.isOnline()) {		
 			this.plugin.getMySQLHelper().getPlayerIncomeToRedeem(player).thenAccept(amount -> {
 				if(amount > 0) {
 					this.plugin.getMySQLHelper().playerRedeemGold(player, amount).thenAccept(result -> {
@@ -63,23 +59,33 @@ public class ShopCommandExecutor implements CommandExecutor{
 							PlayerInventory inventory = player.getInventory();
 							
 							ItemStack redeemedGold = XMaterial.GOLD_INGOT.parseItem();
-							redeemedGold.setAmount(amount);
 							
-							HashMap<Integer, ItemStack> remainingGold = inventory.addItem(redeemedGold);
-							
-							if(!remainingGold.isEmpty()) {
-								Bukkit.getScheduler().runTask(this.plugin, () -> {
-									for(Map.Entry<Integer, ItemStack> item : remainingGold.entrySet()) {
-										player.getWorld().dropItem(player.getLocation(), item.getValue());
+							Bukkit.getScheduler().runTask(this.plugin, () -> {
+								int goldStacks = amount / 64;
+								int remainder  = amount - (64 * goldStacks);
+								
+								while(goldStacks > 0) {
+									redeemedGold.setAmount(64);
+									HashMap<Integer, ItemStack> remain = inventory.addItem(redeemedGold);
+									if(!remain.isEmpty()) {
+										player.getWorld().dropItem(player.getLocation(), remain.get(0));
 									}
-									
-								});			
-							}
+									goldStacks--;
+								}
+								
+								if(remainder > 0) {
+									redeemedGold.setAmount(remainder);
+									HashMap<Integer, ItemStack> remain = inventory.addItem(redeemedGold);
+									if(!remain.isEmpty()) {
+										player.getWorld().dropItem(player.getLocation(), remain.get(0));
+									}
+								}
+							});			
 							
 							player.sendMessage(ChatColor.AQUA + "You redeemed " + amount + " gold from your ledger.");
 						}
 						else {
-							
+							player.sendMessage(ChatColor.RED + "Unable to redeem gold. Please try again later.");
 						}
 					});
 					
