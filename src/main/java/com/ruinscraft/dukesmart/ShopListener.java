@@ -45,7 +45,7 @@ import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
 	
-	private final int HIDE_SHOP_DISPLAY_SECONDS = 10;
+	private final int HIDE_SHOP_DISPLAY_SECONDS = 15;
 	private final String SHOP_SIGN_NO_ITEM      = "" + ChatColor.WHITE + "?";
 	private final String SHOP_SIGN_IDENTIFIER   = "" + ChatColor.DARK_PURPLE + "[Buy]";
 	
@@ -75,7 +75,7 @@ public class ShopListener implements Listener{
         Player player = evt.getPlayer(); // The player who joined
         
         this.plugin.getMySQLHelper().getPlayerIncomeToRedeem(player).thenAccept(income -> {
-        	if( income > 0  && player.isOnline()) {
+        	if(player.isOnline() && income > 0) {
 	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + income + ChatColor.YELLOW
 	            				   + " gold from chest shops." + ChatColor.GOLD + " /shop redeem");
         	}
@@ -111,7 +111,11 @@ public class ShopListener implements Listener{
 	    	}
     	}
     }
-
+    
+    /**
+     * This function handles all Player interactions with a shop sign.
+     * @param evt - called Player interact event
+     */
     //TODO: refactor the shit out of this
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent evt) {
@@ -122,10 +126,13 @@ public class ShopListener implements Listener{
         	Block clickedBlock = evt.getClickedBlock();
         	
             if (blockIsSign(clickedBlock)){
+            	/* a shop is defined as a sign (formatted)
+            	 * and a chest block immediately below it.
+            	 */
                 Sign sign = (Sign) clickedBlock.getState();
                 Block block = clickedBlock.getRelative(BlockFace.DOWN, 1);
                 
-                if(block.getState() instanceof Chest || block.getState() instanceof DoubleChest) {
+                if(blockIsChest(block)) {
                 	Chest chest = (Chest) block.getState();
                 	
                 	// get store information from sign
@@ -145,7 +152,7 @@ public class ShopListener implements Listener{
                 			XMaterial itemMat = XMaterial.matchXMaterial(itemToSell);
                 			
                 			// if player has something in hand (and is owner) set the shop's item
-                			if(!(itemToSell.getType().equals(XMaterial.AIR.parseMaterial())) && playerIsOwner(player, signLines[3])) {
+                			if(!itemIsAir(itemToSell) && playerIsOwner(player, signLines[3])) {
                 				
                 				// Custom/display names
                 				if(itemToSell.getItemMeta().hasDisplayName()) {
@@ -170,6 +177,8 @@ public class ShopListener implements Listener{
 	                			
 	                			this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
 	                				if(result) {
+	                					// TODO: add logic to remove items from filled Shulker
+	                					
 	                    				// if player has a writable book, strip any unfinished writing from it
 	                					if(itemToSell.getType().equals(XMaterial.WRITABLE_BOOK.parseMaterial())) {
 	                    					itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
@@ -194,7 +203,7 @@ public class ShopListener implements Listener{
                 				player.sendMessage(ChatColor.GREEN + " Shop selected.");
                 				
                 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(result ->{
-                					if(result != null && player.isOnline()) {
+                					if(player.isOnline() && result != null) {
 	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
 	                						displayShopInformation(player, result);
 	                					});
@@ -327,14 +336,16 @@ public class ShopListener implements Listener{
 						// If player is the owner, delete it.
 						if(shop.playerOwnsShop(player)) {
 							this.plugin.getMySQLHelper().removeShop(player, shop).thenAccept(result -> {
-								if(result && player.isOnline()) {
-									player.sendMessage(ChatColor.AQUA + "Shop removed.");
-									Bukkit.getScheduler().runTask(this.plugin, () -> {
-                						block.breakNaturally();
-                					});
-								}
-								else if(player.isOnline()){
-									sendError(player, "Unable to remove shop. Try again later.");
+								if(player.isOnline()) {
+									if(result) {
+										player.sendMessage(ChatColor.AQUA + "Shop removed.");
+										Bukkit.getScheduler().runTask(this.plugin, () -> {
+	                						block.breakNaturally();
+	                					});
+									}
+									else {
+										sendError(player, "Unable to remove shop. Try again later.");
+									}
 								}
 							});
 							
@@ -356,8 +367,23 @@ public class ShopListener implements Listener{
     	}
     }
 	
+	/**
+	 * Checks wheter a block is a sign.
+	 * @param block
+	 * @return True if block is sign, False otherwise
+	 */
     private boolean blockIsSign(Block block) {
     	return block.getType().equals(Material.WALL_SIGN) || block.getType().equals(Material.SIGN);
+    }
+    
+    /**
+     * Checks whether a block is a chest or double chest
+     * (note that Enderchests are not checked)
+     * @param block - Block to check
+     * @return True if block is chest, False otherwise
+     */
+    private boolean blockIsChest(Block block) {
+    	return block.getState() instanceof Chest || block.getState() instanceof DoubleChest;
     }
     
     private String materialPrettyPrint(Material material) {
@@ -376,7 +402,7 @@ public class ShopListener implements Listener{
 		int maxStackSize = itemToBuy.getMaxStackSize();
 
 		for(ItemStack item : inv.getContents()) {
-			if(item == null || item.getType().equals(XMaterial.AIR.parseMaterial())) {
+			if(item == null || itemIsAir(item)) {
 				continue;
 			}
 			// check if the slot's amount + quantity is
@@ -453,7 +479,7 @@ public class ShopListener implements Listener{
         else if(itemIsBanner(item)) {
         	BannerMeta bannerMeta = (BannerMeta) item.getItemMeta();
         	for(Pattern pattern : bannerMeta.getPatterns()) {
-        		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getPattern().name())));
+        		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getColor().name()) + (pattern.getPattern().name())));
         	}
         }
         
@@ -640,6 +666,10 @@ public class ShopListener implements Listener{
     private boolean playerIsOwner(Player p, String signname) {
     	//return (ChatColor.DARK_BLUE + p.getName()).equals(ChatColor.DARK_BLUE + signname);
     	return true;
+    }
+    
+    private boolean itemIsAir(ItemStack item) {
+    	return item != null && item.getType().equals(XMaterial.AIR.parseMaterial());
     }
     
     private boolean itemIsBanner(ItemStack item) {
