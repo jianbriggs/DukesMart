@@ -1,7 +1,8 @@
 package com.ruinscraft.dukesmart;
-/* Eclipse GIT import re-push test 2021-02-03 21:14 */
+
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
 public class DukesMart extends JavaPlugin {
@@ -9,6 +10,9 @@ public class DukesMart extends JavaPlugin {
 	private MySQLHelper mySQLHelper;
 	private ShopListener sl;
 	
+	public final Material SHOP_CURRENCY_MATERIAL   = Material.GOLD_INGOT;
+	public final XMaterial SHOP_CURRENCY_XMATERIAL = XMaterial.GOLD_INGOT;
+
     @Override
     public void onEnable() {
     	

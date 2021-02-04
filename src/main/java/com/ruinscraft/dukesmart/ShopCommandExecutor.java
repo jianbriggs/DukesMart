@@ -64,15 +64,15 @@ public class ShopCommandExecutor implements CommandExecutor{
 						if(result) {
 							PlayerInventory inventory = player.getInventory();
 							
-							ItemStack redeemedGold = XMaterial.GOLD_INGOT.parseItem();
+							ItemStack redeemedCurrency = plugin.SHOP_CURRENCY_XMATERIAL.parseItem();
 							
 							Bukkit.getScheduler().runTask(this.plugin, () -> {
 								int goldStacks = amount / 64;
 								int remainder  = amount - (64 * goldStacks);
 								
 								while(goldStacks > 0) {
-									redeemedGold.setAmount(64);
-									HashMap<Integer, ItemStack> remain = inventory.addItem(redeemedGold);
+									redeemedCurrency.setAmount(64);
+									HashMap<Integer, ItemStack> remain = inventory.addItem(redeemedCurrency);
 									if(!remain.isEmpty()) {
 										player.getWorld().dropItem(player.getLocation(), remain.get(0));
 									}
@@ -80,8 +80,8 @@ public class ShopCommandExecutor implements CommandExecutor{
 								}
 								
 								if(remainder > 0) {
-									redeemedGold.setAmount(remainder);
-									HashMap<Integer, ItemStack> remain = inventory.addItem(redeemedGold);
+									redeemedCurrency.setAmount(remainder);
+									HashMap<Integer, ItemStack> remain = inventory.addItem(redeemedCurrency);
 									if(!remain.isEmpty()) {
 										player.getWorld().dropItem(player.getLocation(), remain.get(0));
 									}

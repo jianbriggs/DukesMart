@@ -49,6 +49,8 @@ public class ShopListener implements Listener{
 	private final String SHOP_SIGN_NO_ITEM      = "" + ChatColor.WHITE + "?";
 	private final String SHOP_SIGN_IDENTIFIER   = "" + ChatColor.DARK_PURPLE + "[Buy]";
 	
+	
+	
 	private DukesMart plugin;
 	
 	private HashMap<String, Location>   signSelectedMap  = new HashMap<String, Location>();
@@ -224,7 +226,7 @@ public class ShopListener implements Listener{
 			                		// check if the chest inventory contains the item
 			                		boolean hasStock = false;
 			                		
-			                		if(itemToBuy.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
+			                		if(itemIsWrittenBook(itemToBuy)) {
 			                			ItemStack writable_book = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
 			                			hasStock = shopChestContainsItem(storeStock, writable_book, shop);
 			                		}
@@ -237,11 +239,11 @@ public class ShopListener implements Listener{
 			                				player.updateInventory();
 			                				PlayerInventory pi = player.getInventory();
 			                				
-				                			if(pi.containsAtLeast(new ItemStack(Material.GOLD_INGOT), shop.getPrice())){
+				                			if(pi.containsAtLeast(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL), shop.getPrice())){
 					                			itemToBuy.setAmount(shop.getQuantity());
 					                			
 					                			// remove said items from the chest
-					                			if(itemToBuy.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
+					                			if(itemIsWrittenBook(itemToBuy)) {
 					                				ItemStack writable_book = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
 					                				writable_book.setAmount(shop.getQuantity());
 					                				storeStock.removeItem(writable_book);
@@ -250,7 +252,7 @@ public class ShopListener implements Listener{
 					                				storeStock.removeItem(itemToBuy);
 					                			}
 					                			
-					                			pi.removeItem(new ItemStack(Material.GOLD_INGOT, shop.getPrice()));
+					                			pi.removeItem(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL, shop.getPrice()));
 					                			// and put into the player's inventory
 					                			pi.addItem(itemToBuy);
 					                			
@@ -322,7 +324,7 @@ public class ShopListener implements Listener{
 	@EventHandler
     public void onBlockBreak(BlockBreakEvent evt) {
     	Player player = evt.getPlayer();
-    	Block block = evt.getBlock();
+    	Block  block  = evt.getBlock();
     	
     	if(blockIsSign(block)) {
     		Sign sign = (Sign) block.getState();
@@ -448,7 +450,7 @@ public class ShopListener implements Listener{
         	shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\"");
         }
         
-        if(item.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
+        if(itemIsWrittenBook(item)) {
         	player.sendMessage("(Debug) Item is a written book");
         	BookMeta bookmeta = (BookMeta) meta;
         	
@@ -464,7 +466,7 @@ public class ShopListener implements Listener{
         		shopInfoElements.add(" - " + bookmeta.getPageCount() + " pages");
         	}
         }
-        else if(item.getType().equals(XMaterial.FILLED_MAP.parseMaterial())) {
+        else if(itemIsFilledMap(item)) {
         	MapMeta mapmeta = (MapMeta) meta;
         	
         	if(mapmeta.hasMapView()) {
@@ -525,7 +527,7 @@ public class ShopListener implements Listener{
     
     private String prettyPrint(String message) {
     	String[] words = message.split("_");
-    	String output = "";
+    	String  output = "";
     	
     	for( String word : words) {
     		output += word.substring(0,1).toUpperCase() + word.substring(1).toLowerCase() + " ";
@@ -668,6 +670,10 @@ public class ShopListener implements Listener{
     	return true;
     }
     
+    private boolean itemIsWrittenBook(ItemStack item) {
+    	return item != null && item.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial());
+    }
+    
     private boolean itemIsAir(ItemStack item) {
     	return item != null && item.getType().equals(XMaterial.AIR.parseMaterial());
     }
@@ -679,6 +685,10 @@ public class ShopListener implements Listener{
     private boolean itemIsPotion(ItemStack item) {
 		return item != null && item.getType().name().contains("POTION");
 	}
+    
+    private boolean itemIsFilledMap(ItemStack item) {
+    	return item.getType().equals(XMaterial.FILLED_MAP.parseMaterial());
+    }
     
     private String getPotionName(ItemStack potion) {
     	PotionMeta meta = (PotionMeta) potion.getItemMeta();

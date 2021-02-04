@@ -155,9 +155,6 @@ public class MySQLHelper {
 	                    if(query.executeUpdate() > 0 ) {
 	                    	return true;
 	                    }
-	                    else {
-	                    	return false;
-	                    }
 	                }
 	            } catch (SQLException e) {
 	                e.printStackTrace();
@@ -176,7 +173,6 @@ public class MySQLHelper {
      */
     public CompletableFuture<Boolean> registerShop(Player player, Sign shopSign, ItemStack item) {
     	return CompletableFuture.supplyAsync(() -> {
-    		Boolean result = false;
 	    	try(Connection connection = getConnection()){
 	    		String sql = "INSERT INTO dukesmart_shops (player_uuid, shop_name, world, location_x, location_y, location_z,"
 	    				   + " material, quantity, price, item_serialization, item_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -231,10 +227,7 @@ public class MySQLHelper {
 		            query.setString(18, hash);
 
 		            if(query.executeUpdate() > 0) {
-		            	result = true;
-		            }
-		            else {
-		            	result = false;
+		            	return true;
 		            }
 	            }
 	        }
@@ -245,7 +238,7 @@ public class MySQLHelper {
 				e.printStackTrace();
 			}
 	    	
-	    	return result;
+	    	return false;
     	});
 	}
     
@@ -360,9 +353,6 @@ public class MySQLHelper {
 
                     if(query.executeUpdate() > 0) {
                     	return true;
-                    }
-                    else {
-                    	return false;
                     }
                 }
 
