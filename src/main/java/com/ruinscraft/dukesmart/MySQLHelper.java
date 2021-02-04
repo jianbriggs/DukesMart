@@ -23,12 +23,58 @@ import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
 
 public class MySQLHelper {
-	private String host;
-	private int port;
-	private String database;
-	private String username;
-	private String password;
+	private final String host;
+	private final int port;
+	private final String database;
+	private final String username;
+	private final String password;
 	
+	private final String SQL_CREATE_TABLE_SHOPS = "CREATE TABLE IF NOT EXISTS dukesmart_shops ("
+												+ " shop_id int(11) NOT NULL,"
+												+ " player_uuid char(40) NOT NULL,"
+											    + " shop_name varchar(32) NOT NULL,"
+												+ " world varchar(10) NOT NULL DEFAULT 'NORMAL',"
+												+ " location_x smallint(6) NOT NULL,"
+											    + " location_y smallint(6) NOT NULL,"
+												+ " location_z smallint(6) NOT NULL,"
+												+ " material varchar(32) NOT NULL,"
+												+ " item_serialization blob NOT NULL,"
+												+ " item_hash varchar(256) NOT NULL)";
+	
+	private final String SQL_CREATE_TABLE_LEDGERS = "CREATE TABLE IF NOT EXISTS dukesmart_ledgers ("
+											  	  + " ledger_id int(11) NOT NULL,"
+											  	  + " player_uuid char(40) NOT NULL,"
+											  	  + " income int(11) NOT NULL DEFAULT '0',"
+											  	  + " total_earned int(11) NOT NULL DEFAULT '0')";
+	
+	private final String SQL_CREATE_TABLE_TRANSACTIONS = "CREATE TABLE IF NOT EXISTS dukesmart_transactions ("
+													   + " transaction_id int(11) NOT NULL," 
+													   + " buyer_uuid char(40) NOT NULL,"
+													   + " shop_id int(11) NOT NULL,"
+													   + " purchase_date datetime NOT NULL)";
+	
+	private final String SQL_SELECT_SHOP_FROM_LOCATION = "SELECT shop_id, player_uuid, shop_name, item_serialization, quantity, price FROM dukesmart_shops"
+		     										   + " WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
+	
+	private final String SQL_DELETE_SHOP = "DELETE FROM dukesmart_shops WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ? AND player_uuid = ?";
+
+	private final String SQL_CREATE_SHOP = "INSERT INTO dukesmart_shops (player_uuid, shop_name, world, location_x, location_y, location_z,"
+									     + " material, quantity, price, item_serialization, item_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+									     + " ON DUPLICATE KEY UPDATE player_uuid = ?, shop_name = ?, material = ?, quantity = ?, price = ?,"
+									     + " item_serialization = ?, item_hash = ?";
+	
+	
+	private final String SQL_CREATE_LEDGER = "INSERT INTO dukesmart_ledgers (player_uuid, income, total_earned) VALUES(?, 0, 0)"
+			  							   + " ON DUPLICATE KEY UPDATE income = income, total_earned = total_earned";
+	
+	private final String SQL_ADD_GOLD_TO_SHOP_LEDGER = "UPDATE dukesmart_ledgers SET income = income + ?, total_earned = total_earned + ? WHERE player_uuid = ?";
+	
+	private final String SQL_GET_PLAYER_INCOME = "SELECT income FROM dukesmart_ledgers WHERE player_uuid = ?";
+	
+	private final String SQL_REDEEM_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = income - ? WHERE player_uuid = ?";
+	
+	private final String SQL_LOG_TRANSACTION = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
+
 	public MySQLHelper(String host, int port, String database, String username, String password) {
 		this.host = host;
 		this.port = port;
@@ -40,37 +86,16 @@ public class MySQLHelper {
             try (Connection connection = getConnection()) {
             	// Shops table
                 try (Statement statement = connection.createStatement()) {
-                	String query = "CREATE TABLE IF NOT EXISTS dukesmart_shops ("
-                				 + " shop_id int(11) NOT NULL,"
-                				 + " player_uuid char(40) NOT NULL,"
-                				 + " shop_name varchar(32) NOT NULL,"
-                				 + " world varchar(10) NOT NULL DEFAULT 'NORMAL',"
-                				 + " location_x smallint(6) NOT NULL,"
-                				 + " location_y smallint(6) NOT NULL,"
-                				 + " location_z smallint(6) NOT NULL,"
-                				 + " material varchar(32) NOT NULL,"
-                				 + " item_serialization blob NOT NULL,"
-                				 + " item_hash varchar(256) NOT NULL)";
-                    statement.execute(query);
+                    statement.execute(this.SQL_CREATE_TABLE_SHOPS);
                 }
                 // Ledger table
                 try (Statement statement = connection.createStatement()){
-                	String query = "CREATE TABLE IF NOT EXISTS dukesmart_ledgers ("
-                			  	 + " ledger_id int(11) NOT NULL,"
-                			  	 + " player_uuid char(40) NOT NULL,"
-                			  	 + " income int(11) NOT NULL DEFAULT '0',"
-                			  	 + " total_earned int(11) NOT NULL DEFAULT '0')";
-                	statement.execute(query);
+                	statement.execute(this.SQL_CREATE_TABLE_LEDGERS);
                 }
                 
                 // Transaction history table
                 try (Statement statement = connection.createStatement()){
-                	String query = "CREATE TABLE IF NOT EXISTS dukesmart_transactions ("
-                				 + " transaction_id int(11) NOT NULL," 
-                				 + " buyer_uuid char(40) NOT NULL,"
-                				 + " shop_id int(11) NOT NULL,"
-                				 + " purchase_date datetime NOT NULL)";
-                	statement.execute(query);
+                	statement.execute(this.SQL_CREATE_TABLE_TRANSACTIONS);
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -100,10 +125,8 @@ public class MySQLHelper {
         	Shop shop = null;
         	
             try (Connection connection = getConnection()) {
-            	String sql = "SELECT shop_id, player_uuid, shop_name, item_serialization, quantity, price FROM dukesmart_shops"
-            			     + " WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
-            	
-                try (PreparedStatement query = connection.prepareStatement(sql)) {
+
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_SELECT_SHOP_FROM_LOCATION)) {
                     query.setString(1, world);
                     query.setShort(2, x);
                     query.setShort(3, y);
@@ -143,9 +166,8 @@ public class MySQLHelper {
         	
         	if(shop.playerOwnsShop(player)) {
 	            try (Connection connection = getConnection()) {
-	            	String sql = "DELETE FROM dukesmart_shops WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ? AND player_uuid = ?";
 	            	
-	                try (PreparedStatement query = connection.prepareStatement(sql)) {
+	                try (PreparedStatement query = connection.prepareStatement(this.SQL_DELETE_SHOP)) {
 	                    query.setString(1, world);
 	                    query.setShort(2, x);
 	                    query.setShort(3, y);
@@ -174,10 +196,7 @@ public class MySQLHelper {
     public CompletableFuture<Boolean> registerShop(Player player, Sign shopSign, ItemStack item) {
     	return CompletableFuture.supplyAsync(() -> {
 	    	try(Connection connection = getConnection()){
-	    		String sql = "INSERT INTO dukesmart_shops (player_uuid, shop_name, world, location_x, location_y, location_z,"
-	    				   + " material, quantity, price, item_serialization, item_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-	    				   + " ON DUPLICATE KEY UPDATE player_uuid = ?, shop_name = ?, material = ?, quantity = ?, price = ?,"
-	    				   + " item_serialization = ?, item_hash = ?";
+	    		
 	    		
 	    		// inputs
 	    		Location shopLocation = shopSign.getLocation();
@@ -204,7 +223,7 @@ public class MySQLHelper {
 	
 	    		String hash = Base64.getEncoder().encodeToString(digest);
 	    		
-	            try(PreparedStatement query = connection.prepareStatement(sql)){
+	            try(PreparedStatement query = connection.prepareStatement(this.SQL_CREATE_SHOP)){
 		            query.setString(1, player_uuid);
 		            query.setString(2, shop_name);
 		            query.setString(3, world);
@@ -252,15 +271,10 @@ public class MySQLHelper {
     public CompletableFuture<Boolean> processTransaction(Player buyer, Shop shop){
         return CompletableFuture.supplyAsync(() -> {
         	boolean transactionComplete = false;
-        	
-        	String sql_addGoldToShopLedger = "UPDATE dukesmart_ledgers SET income = income + ?, total_earned = total_earned + ?"
-        								   + " WHERE player_uuid = ?";
-        	
-        	String sql_logTransaction = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
-        	
+        
             try (Connection connection = getConnection()) {
 
-                try (PreparedStatement query = connection.prepareStatement(sql_logTransaction)) {
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_LOG_TRANSACTION)) {
                 	
                     query.setString(1, buyer.getUniqueId().toString());
                     query.setInt(2, shop.getID());
@@ -270,7 +284,7 @@ public class MySQLHelper {
                     }
                 }
                 
-                try (PreparedStatement query = connection.prepareStatement(sql_addGoldToShopLedger)){
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_ADD_GOLD_TO_SHOP_LEDGER)){
                 	query.setInt(1, shop.getPrice());
                 	query.setInt(2, shop.getPrice());
                 	query.setString(3, shop.getOwner());
@@ -289,12 +303,10 @@ public class MySQLHelper {
     
     public CompletableFuture<Boolean> setupLedger(Player player){
         return CompletableFuture.supplyAsync(() -> {
-        	String sql_createPlayerLedger = "INSERT INTO dukesmart_ledgers (player_uuid, income, total_earned) VALUES(?, 0, 0)"
-        								  + " ON DUPLICATE KEY UPDATE income = income, total_earned = total_earned";
         	
             try (Connection connection = getConnection()) {
 
-                try (PreparedStatement query = connection.prepareStatement(sql_createPlayerLedger)) {
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_CREATE_LEDGER)) {
                 	
                     query.setString(1, player.getUniqueId().toString());
 
@@ -313,11 +325,10 @@ public class MySQLHelper {
     
     public CompletableFuture<Integer> getPlayerIncomeToRedeem(Player player){
         return CompletableFuture.supplyAsync(() -> {
-        	String sql_getPlayerIncome = "SELECT income FROM dukesmart_ledgers WHERE player_uuid = ?";
-        	
+        	        	
             try (Connection connection = getConnection()) {
 
-                try (PreparedStatement query = connection.prepareStatement(sql_getPlayerIncome)) {
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_GET_PLAYER_INCOME)) {
                 	
                     query.setString(1, player.getUniqueId().toString());
 
@@ -342,11 +353,10 @@ public class MySQLHelper {
     
     public CompletableFuture<Boolean> playerRedeemGold(Player player, int amount){
         return CompletableFuture.supplyAsync(() -> {
-        	String sql_getPlayerIncome = "UPDATE dukesmart_ledgers SET income = income - ? WHERE player_uuid = ?";
         	
             try (Connection connection = getConnection()) {
 
-                try (PreparedStatement query = connection.prepareStatement(sql_getPlayerIncome)) {
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_REDEEM_LEDGER_INCOME)) {
                 	
                 	query.setInt(1, amount);
                     query.setString(2, player.getUniqueId().toString());
