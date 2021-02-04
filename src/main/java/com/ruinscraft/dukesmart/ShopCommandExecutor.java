@@ -28,29 +28,35 @@ public class ShopCommandExecutor implements CommandExecutor{
 	
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if(sender instanceof Player) {
-			Player player = (Player) sender;
-			
-			player.sendMessage("(Command) You issued /shop");
-			
-			if(args.length >= 1) {
-				String subcommand = args[0];
-				
-				if(subcommand.equalsIgnoreCase("redeem")) {
-					return redeemGold(player);
-				}
-			}
-			else {
-				if(player.isOnline()) {
-					player.sendMessage(commandHelp);
-					return true;
-				}
+		if(!(sender instanceof Player)) {
+			return false;
+		}
+		
+		Player player = (Player) sender;
+		
+		if(args.length >= 1) {
+			switch(args[0].toLowerCase()){
+				case "redeem":
+					redeemGold(player);
+					break;
+				default:
+					showHelp(player);
+					break;
 			}
 		}
-		return false;
+		else {
+			showHelp(player);
+		}
+		
+		return true;
 	}
 	
-	private boolean redeemGold(Player player) {
+	private void showHelp(Player player) {
+		if(player.isOnline()) {
+			player.sendMessage(commandHelp);
+		}
+	}
+	private void redeemGold(Player player) {
 		if(player.isOnline()) {		
 			this.plugin.getMySQLHelper().getPlayerIncomeToRedeem(player).thenAccept(amount -> {
 				if(amount > 0) {
@@ -95,9 +101,6 @@ public class ShopCommandExecutor implements CommandExecutor{
 				}
 	
 			});
-			return true;
 		}
-		
-		return false;
 	}
 }

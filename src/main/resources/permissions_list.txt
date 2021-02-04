@@ -1,0 +1,6 @@
+Permissions for DukesMart
+=========================
+
+To be filled as needed
+
+Base permission: dukesmart.shop

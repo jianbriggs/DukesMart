@@ -7,6 +7,4 @@ commands:
   shop:
     description: Shows all commands for DukesMart
     usage: /shop
-  shop.redeem:
-    description: Redeems gold from your shop ledger
-    usage: /shop redeem
+    permission: dukesmart.shop
