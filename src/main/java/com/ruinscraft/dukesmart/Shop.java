@@ -12,7 +12,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 public class Shop {
 	private final int id;
 	private final String owner_uuid;
-	private String name;
 	private final String world;
 	private final short loc_x;
 	private final byte loc_y;
@@ -22,10 +21,9 @@ public class Shop {
 	private short quantity;
 	private int price;
 	
-	public Shop(int id, String owner_uuid, String name, String world, short loc_x, byte loc_y, short loc_z, ItemStack item, short quantity, int price) {
+	public Shop(int id, String owner_uuid, String world, short loc_x, byte loc_y, short loc_z, ItemStack item, short quantity, int price) {
 		this.id = id;
 		this.owner_uuid = owner_uuid;
-		this.name = name;
 		this.world = world;
 		this.loc_x = loc_x;
 		this.loc_y = loc_y;
@@ -67,11 +65,7 @@ public class Shop {
 	}
 	
 	public String getName() {
-		return this.name;
-	}
-	
-	public void setName(String name) {
-		this.name = name;
+		return this.getOwnerName() + "'s Shop";
 	}
 	
 	public short getQuantity() {

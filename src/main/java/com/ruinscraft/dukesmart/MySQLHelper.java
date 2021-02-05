@@ -32,14 +32,12 @@ public class MySQLHelper {
 	private final String SQL_CREATE_TABLE_SHOPS = "CREATE TABLE IF NOT EXISTS dukesmart_shops ("
 												+ " shop_id int(11) NOT NULL,"
 												+ " player_uuid char(40) NOT NULL,"
-											    + " shop_name varchar(32) NOT NULL,"
 												+ " world varchar(10) NOT NULL DEFAULT 'NORMAL',"
 												+ " location_x smallint(6) NOT NULL,"
 											    + " location_y smallint(6) NOT NULL,"
 												+ " location_z smallint(6) NOT NULL,"
 												+ " material varchar(32) NOT NULL,"
-												+ " item_serialization blob NOT NULL,"
-												+ " item_hash varchar(256) NOT NULL)";
+												+ " item_serialization blob NOT NULL)";
 	
 	private final String SQL_CREATE_TABLE_LEDGERS = "CREATE TABLE IF NOT EXISTS dukesmart_ledgers ("
 											  	  + " ledger_id int(11) NOT NULL,"
@@ -53,15 +51,14 @@ public class MySQLHelper {
 													   + " shop_id int(11) NOT NULL,"
 													   + " purchase_date datetime NOT NULL)";
 	
-	private final String SQL_SELECT_SHOP_FROM_LOCATION = "SELECT shop_id, player_uuid, shop_name, item_serialization, quantity, price FROM dukesmart_shops"
+	private final String SQL_SELECT_SHOP_FROM_LOCATION = "SELECT shop_id, player_uuid, item_serialization, quantity, price FROM dukesmart_shops"
 		     										   + " WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
 	
 	private final String SQL_DELETE_SHOP = "DELETE FROM dukesmart_shops WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ? AND player_uuid = ?";
 
-	private final String SQL_CREATE_SHOP = "INSERT INTO dukesmart_shops (player_uuid, shop_name, world, location_x, location_y, location_z,"
-									     + " material, quantity, price, item_serialization, item_hash) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-									     + " ON DUPLICATE KEY UPDATE player_uuid = ?, shop_name = ?, material = ?, quantity = ?, price = ?,"
-									     + " item_serialization = ?, item_hash = ?";
+	private final String SQL_CREATE_SHOP = "INSERT INTO dukesmart_shops (player_uuid, world, location_x, location_y, location_z,"
+									     + " material, quantity, price, item_serialization) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"
+									     + " ON DUPLICATE KEY UPDATE player_uuid = ?, material = ?, quantity = ?, price = ?, item_serialization = ?";
 	
 	
 	private final String SQL_CREATE_LEDGER = "INSERT INTO dukesmart_ledgers (player_uuid, income, total_earned) VALUES(?, 0, 0)"
@@ -71,10 +68,6 @@ public class MySQLHelper {
 	
 	private final String SQL_GET_PLAYER_INCOME = "SELECT income FROM dukesmart_ledgers WHERE player_uuid = ?";
 	
-	private final String SQL_REDEEM_LEDGER_INCOME_OLD = "UPDATE dukesmart_ledgers SET income = income - ? WHERE player_uuid = ?";
-	
-	private final String SQL_REDEEM_LEDGER_INCOME_OLD2 = "UPDATE dukesmart_ledgers SET income = CASE WHEN income >= ? THEN income - ? ELSE income END WHERE player_uuid = ?";
-
 	private final String SQL_UPDATE_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = ? WHERE player_uuid = ?";
 	
 	private final String SQL_LOG_TRANSACTION = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
@@ -140,12 +133,11 @@ public class MySQLHelper {
                         result.next();
                         int s_id = result.getInt(1);
                     	String s_uuid  = result.getString(2);
-                        String s_name  = result.getString(3);
                         short  s_quantity = result.getShort(5);
                         int    s_price = result.getInt(6);
 						try {
 							ItemStack item = itemFrom64(result.getString(4));
-							shop = new Shop(s_id, s_uuid, s_name, world, x, y, z, item, s_quantity, s_price);
+							shop = new Shop(s_id, s_uuid, world, x, y, z, item, s_quantity, s_price);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -205,7 +197,6 @@ public class MySQLHelper {
 	    		// inputs
 	    		Location shopLocation = shopSign.getLocation();
 	    		String player_uuid = player.getUniqueId().toString();
-	    		String shop_name = player.getName() + "'s Shop";
 	    		String world = shopLocation.getWorld().getName();
 	    		short loc_x = (short) shopLocation.getX();
 	    		byte loc_y = (byte) shopLocation.getY();
@@ -223,31 +214,24 @@ public class MySQLHelper {
 	    		
 	    		MessageDigest md = MessageDigest.getInstance("MD5");
 	    	    md.update(item_serial.toString().getBytes());
-	    	    byte[] digest = md.digest();
 	
-	    		String hash = Base64.getEncoder().encodeToString(digest);
-	    		
 	            try(PreparedStatement query = connection.prepareStatement(this.SQL_CREATE_SHOP)){
 		            query.setString(1, player_uuid);
-		            query.setString(2, shop_name);
-		            query.setString(3, world);
-		            query.setShort(4, loc_x);
-		            query.setShort(5, loc_y);
-		            query.setShort(6, loc_z);
-		            query.setString(7, material);
-		            query.setInt(8, quantity);
-		            query.setInt(9, price);
-		            query.setString(10, item_serial_base64);
-		            query.setString(11, hash);
+		            query.setString(2, world);
+		            query.setShort(3, loc_x);
+		            query.setShort(4, loc_y);
+		            query.setShort(5, loc_z);
+		            query.setString(6, material);
+		            query.setInt(7, quantity);
+		            query.setInt(8, price);
+		            query.setString(9, item_serial_base64);
 		            
 		            // duplicate
-		            query.setString(12, player_uuid);
-		            query.setString(13, shop_name);
-		            query.setString(14, material);
-		            query.setInt(15, quantity);
-		            query.setInt(16, price);
-		            query.setString(17, item_serial_base64);
-		            query.setString(18, hash);
+		            query.setString(10, player_uuid);
+		            query.setString(11, material);
+		            query.setInt(12, quantity);
+		            query.setInt(13, price);
+		            query.setString(14, item_serial_base64);
 
 		            if(query.executeUpdate() > 0) {
 		            	return true;
