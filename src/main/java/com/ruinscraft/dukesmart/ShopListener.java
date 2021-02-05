@@ -46,7 +46,7 @@ public class ShopListener implements Listener{
 	private final int HIDE_SHOP_DISPLAY_SECONDS = 15;
 	private final String SHOP_SIGN_NO_ITEM      = "" + ChatColor.WHITE + "?";
 	private final String SHOP_SIGN_IDENTIFIER   = "" + ChatColor.DARK_PURPLE + "[Buy]";
-	
+	private final String SHOP_SIGN_OWNER_COLOR  = "" + ChatColor.DARK_BLUE;
 	
 	
 	private DukesMart plugin;
@@ -105,7 +105,7 @@ public class ShopListener implements Listener{
 
 	    		evt.setLine(0, SHOP_SIGN_IDENTIFIER);
     			evt.setLine(1, SHOP_SIGN_NO_ITEM);
-	    		evt.setLine(3, ChatColor.DARK_BLUE + player.getName());
+	    		evt.setLine(3, SHOP_SIGN_OWNER_COLOR + player.getName());
 
 	    		player.sendMessage(ChatColor.AQUA + "Sign shop created! Now right-click the sign with an item to assign it.");
 	    	}
@@ -259,8 +259,8 @@ public class ShopListener implements Listener{
 					                			
 					                			this.plugin.getMySQLHelper().processTransaction(player, shop).thenAccept(result -> {
 						                			if(player.isOnline()) {
-						                				player.sendMessage("You purchased " + ChatColor.AQUA + shop.getQuantity() + " "
-						                						+ materialPrettyPrint(itemToBuy.getType()) + ChatColor.WHITE + " for " + ChatColor.GOLD + shop.getPrice() + " gold.");
+						                				player.sendMessage(ChatColor.AQUA + "You purchased " + shop.getQuantity() + "x "
+						                						+ materialPrettyPrint(itemToBuy.getType()) + " for " + ChatColor.GOLD + "$" + shop.getPrice());
 						                			}		
 					                			});
 				                			}
@@ -295,9 +295,10 @@ public class ShopListener implements Listener{
 
 		this.plugin.getMySQLHelper().getShopFromLocation(location).thenAccept(shop -> {
 			if(shop != null) {
-				// update player name
-				sign.setLine(3, "Line change test");
-				sign.update();
+				Bukkit.getScheduler().runTask(this.plugin, () -> {
+					sign.setLine(3, SHOP_SIGN_OWNER_COLOR + shop.getOwnerName());
+					sign.update();
+				});	
 			}
 		});
 	}
@@ -689,7 +690,7 @@ public class ShopListener implements Listener{
 	}
     
     private boolean itemIsFilledMap(ItemStack item) {
-    	return item.getType().equals(XMaterial.FILLED_MAP.parseMaterial());
+    	return item != null && item.getType().equals(XMaterial.FILLED_MAP.parseMaterial());
     }
     
     private String getPotionName(ItemStack potion) {
