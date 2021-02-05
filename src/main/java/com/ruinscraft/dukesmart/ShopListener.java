@@ -76,7 +76,7 @@ public class ShopListener implements Listener{
     public void onPlayerJoin(PlayerJoinEvent evt) {
         Player player = evt.getPlayer(); // The player who joined
         
-        this.plugin.getMySQLHelper().getPlayerIncomeToRedeem(player).thenAccept(income -> {
+        this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(income -> {
         	if(player.isOnline() && income > 0) {
 	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + income + ChatColor.YELLOW
 	            				   + " gold from chest shops." + ChatColor.GOLD + " /shop redeem");

@@ -71,7 +71,11 @@ public class MySQLHelper {
 	
 	private final String SQL_GET_PLAYER_INCOME = "SELECT income FROM dukesmart_ledgers WHERE player_uuid = ?";
 	
-	private final String SQL_REDEEM_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = income - ? WHERE player_uuid = ?";
+	private final String SQL_REDEEM_LEDGER_INCOME_OLD = "UPDATE dukesmart_ledgers SET income = income - ? WHERE player_uuid = ?";
+	
+	private final String SQL_REDEEM_LEDGER_INCOME_OLD2 = "UPDATE dukesmart_ledgers SET income = CASE WHEN income >= ? THEN income - ? ELSE income END WHERE player_uuid = ?";
+
+	private final String SQL_UPDATE_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = ? WHERE player_uuid = ?";
 	
 	private final String SQL_LOG_TRANSACTION = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
 
@@ -323,7 +327,7 @@ public class MySQLHelper {
         });
     }
     
-    public CompletableFuture<Integer> getPlayerIncomeToRedeem(Player player){
+    public CompletableFuture<Integer> getPlayerIncome(Player player){
         return CompletableFuture.supplyAsync(() -> {
         	        	
             try (Connection connection = getConnection()) {
@@ -351,26 +355,60 @@ public class MySQLHelper {
         });
     }
     
-    public CompletableFuture<Boolean> playerRedeemGold(Player player, int amount){
-        return CompletableFuture.supplyAsync(() -> {
-        	
+    /**
+     * Withdraws a specified amount of money from a player's ledger
+     * 
+     * @param player - Player who's ledger will be redeemed
+     * @param amount - amount to withdraw from ledger
+     * @return 1 on success, 0 on no-change, -1 on error
+     * 
+     */
+    public CompletableFuture<Integer> playerRedeemLedgerIncome(Player player, int amount){
+        return CompletableFuture.supplyAsync(() -> {       	
             try (Connection connection = getConnection()) {
-
-                try (PreparedStatement query = connection.prepareStatement(this.SQL_REDEEM_LEDGER_INCOME)) {
-                	
-                	query.setInt(1, amount);
-                    query.setString(2, player.getUniqueId().toString());
-
-                    if(query.executeUpdate() > 0) {
-                    	return true;
+            	
+            	try (PreparedStatement startIncomeQuery = connection.prepareStatement(this.SQL_GET_PLAYER_INCOME)){
+            		startIncomeQuery.setString(1, player.getUniqueId().toString());
+            		int startIncome, newAmount;
+            		
+            		try (ResultSet result = startIncomeQuery.executeQuery()) {
+                        result.next();
+                        startIncome = result.getInt(1);   
+                        
+                        /*
+                         * if the player cannot withdraw the specified amount,
+                         * exit with error to prevent new query and checking
+                         */
+                        if(startIncome < amount) {
+                        	return -1;
+                        }
+                        
+                        newAmount = startIncome - amount;
+                        
+                        /* similarly, if the new amount is equal to the
+                         * starting amount (no change), don't bother updating the ledger
+                         */
+                        if(newAmount == startIncome) {
+                        	return 0;
+                        }
                     }
-                }
+            		
+	                try (PreparedStatement updateIncome = connection.prepareStatement(this.SQL_UPDATE_LEDGER_INCOME)) {
+	                	
+	                	updateIncome.setInt(1, newAmount);
+	                    updateIncome.setString(2, player.getUniqueId().toString());
+	                    
+	                    if(updateIncome.executeUpdate() > 0) {
+	                    	return 1;
+	                    }
+	                }
+            	}
 
             } catch (SQLException e) {
                 e.printStackTrace();
             }
             
-            return false;
+            return -1;
         });
     }
     

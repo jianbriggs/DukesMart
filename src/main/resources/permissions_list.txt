@@ -3,4 +3,11 @@ Permissions for DukesMart
 
 To be filled as needed
 
-Base permission: dukesmart.shop
+All players
+-----------
+dukesmart.shop
+
+Helper, Mod, & Admin
+--------------------
+dukesmart.shop.edit - edit a shop's values (likely won't be used)
+dukesmart.shop.admin - admin-only functions
