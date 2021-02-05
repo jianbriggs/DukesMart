@@ -76,8 +76,8 @@ public class ShopListener implements Listener{
         
         this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(income -> {
         	if(player.isOnline() && income > 0) {
-	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + income + ChatColor.YELLOW
-	            				   + " gold from chest shops." + ChatColor.GOLD + " /shop redeem");
+	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + "$" + income + ChatColor.YELLOW
+	            				   + " from your chest shops." + ChatColor.GOLD + " /shop withdraw");
         	}
         });
 
@@ -208,6 +208,9 @@ public class ShopListener implements Listener{
 	                						displayShopInformation(player, result);
 	                					});
                 					}
+                					else {
+                						player.sendMessage("Shop at location is NULL");
+                					}
                 				});			
                 			}
                 			else if( playerSelected.equals(shopLocation)){
@@ -289,10 +292,11 @@ public class ShopListener implements Listener{
      */
 	private void updateSign(Sign sign) {
 		Location location = sign.getLocation();
+
 		this.plugin.getMySQLHelper().getShopFromLocation(location).thenAccept(shop -> {
 			if(shop != null) {
 				// update player name
-				sign.setLine(3, shop.getOwnerName());
+				sign.setLine(3, "Line change test");
 				sign.update();
 			}
 		});

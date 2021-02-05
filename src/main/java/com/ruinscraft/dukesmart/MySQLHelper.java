@@ -133,10 +133,10 @@ public class MySQLHelper {
                         result.next();
                         int s_id = result.getInt(1);
                     	String s_uuid  = result.getString(2);
-                        short  s_quantity = result.getShort(5);
-                        int    s_price = result.getInt(6);
+                        short  s_quantity = result.getShort(4);
+                        int    s_price = result.getInt(5);
 						try {
-							ItemStack item = itemFrom64(result.getString(4));
+							ItemStack item = itemFrom64(result.getString(3));
 							shop = new Shop(s_id, s_uuid, world, x, y, z, item, s_quantity, s_price);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block

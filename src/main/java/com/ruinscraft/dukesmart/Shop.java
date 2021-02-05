@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -57,7 +58,13 @@ public class Shop {
 	}
 	
 	public String getOwnerName() {
-		return Bukkit.getPlayer(UUID.fromString(this.owner_uuid)).getName();
+		OfflinePlayer owner = Bukkit.getOfflinePlayer(UUID.fromString(this.owner_uuid));
+		if(owner.getName() != null) {
+			return owner.getName();
+		}
+		else {
+			return "???";
+		}
 	}
 	
 	public String getOwner() {
