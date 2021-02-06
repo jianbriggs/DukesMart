@@ -39,6 +39,7 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
+import jdk.internal.net.http.common.Logger;
 import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
@@ -63,19 +64,28 @@ public class ShopListener implements Listener{
 	}
 	
     @EventHandler
-    /*
-     * Whenever a player joins the server, they should be greeted
-     * with a message saying if any of the player's shops made
-     * any income (gold ingots). If The player has made money
-     * since last login, it will print the amount and suggest
-     * to the player to run the /redeem command to retrieve the
-     * gold.
+    /**
+     * On player join, any >0 money in their shop ledger will be displayed.
+     * If the player is new or does not have a ledger, it will be created.
+     * @param evt - Player join event
      */
     public void onPlayerJoin(PlayerJoinEvent evt) {
         Player player = evt.getPlayer(); // The player who joined
         
         this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(income -> {
-        	if(player.isOnline() && income > 0) {
+        	/* if the returning value is '-1', then the player does
+        	 * not have a ledger and must be created
+        	 */
+        	if(income == -1) {
+        		this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
+        			if(result) {
+        				Bukkit.getLogger().info("New ledger created for " + player.getName() + " (UUID: " + player.getUniqueId() + ")");;
+        				player.sendMessage(ChatColor.GREEN + "Welcome! Your DukesMart ledger has been created!");
+        				player.sendMessage(ChatColor.GREEN + "You may view your ledger balance with /shop balance or withdraw with /shop withdraw");
+        			}
+        		});
+        	}
+        	else if(player.isOnline() && income > 0) {
 	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + "$" + income + ChatColor.YELLOW
 	            				   + " from your chest shops." + ChatColor.GOLD + " /shop withdraw");
         	}

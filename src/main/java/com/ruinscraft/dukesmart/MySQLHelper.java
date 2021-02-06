@@ -311,6 +311,11 @@ public class MySQLHelper {
         });
     }
     
+    /**
+     * Gets the amount of money in a player's shop ledger
+     * @param player - Player whose ledger will be checked
+     * @return Amount of income on success, -1 if ledger does not exist, 0 otherwise
+     */
     public CompletableFuture<Integer> getPlayerIncome(Player player){
         return CompletableFuture.supplyAsync(() -> {
         	        	
@@ -326,7 +331,8 @@ public class MySQLHelper {
                     		return result.getInt(1);
                     	}
                     	else {
-                    		return 0;
+                    		// player must not have a ledger
+                    		return -1;
                     	}
                     }
                 }
