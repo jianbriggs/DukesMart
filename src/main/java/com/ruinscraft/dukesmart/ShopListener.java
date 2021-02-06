@@ -49,6 +49,7 @@ public class ShopListener implements Listener{
 	private final String SHOP_SIGN_IDENTIFIER   = "" + ChatColor.DARK_PURPLE + "[Buy]";
 	private final String SHOP_SIGN_OWNER_COLOR  = "" + ChatColor.DARK_BLUE;
 	
+	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
 	
 	private DukesMart plugin;
 	
@@ -184,22 +185,16 @@ public class ShopListener implements Listener{
                 				}
                 				
 	                			sign.update();
-	                			
-	                			this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
-	                				if(result) {
-	                					// TODO: add logic to remove items from filled Shulker
-	                					
-	                    				// if player has a writable book, strip any unfinished writing from it
-	                					if(itemToSell.getType().equals(XMaterial.WRITABLE_BOOK.parseMaterial())) {
-	                    					itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
-	                    				}
-	                    				
-	                					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
-	    	                				player.sendMessage(ChatColor.AQUA + "Shop item set. Place items to sell in chest below sign.");
-	    	                			});	
-	                				}
-	                			});
-
+            					// TODO: add logic to remove items from filled Shulker
+            					
+                				// if player has a writable book, strip any unfinished writing from it
+            					if(itemIsWrittenBook(itemToSell)) {
+                					itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
+                				}
+                				
+            					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
+	                				player.sendMessage(this.MSG_SHOP_CREATION_SUCCESS);
+	                			});	
                 			}
                 		}
                 		else{

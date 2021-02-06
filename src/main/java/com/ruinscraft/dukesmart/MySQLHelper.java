@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Base64;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import org.bukkit.Location;
@@ -40,7 +41,6 @@ public class MySQLHelper {
 												+ " item_serialization blob NOT NULL)";
 	
 	private final String SQL_CREATE_TABLE_LEDGERS = "CREATE TABLE IF NOT EXISTS dukesmart_ledgers ("
-											  	  + " ledger_id int(11) NOT NULL,"
 											  	  + " player_uuid char(40) NOT NULL,"
 											  	  + " income int(11) NOT NULL DEFAULT '0',"
 											  	  + " total_earned int(11) NOT NULL DEFAULT '0')";
@@ -345,6 +345,39 @@ public class MySQLHelper {
         });
     }
     
+    /**
+     * Returns the income of player from a supplied unique ID
+     * @param playerUUID - A player's unique ID
+     * @return Amount of income on success, -1 if ledger does not exist, 0 otherwise
+     */
+    public CompletableFuture<Integer> getPlayerIncome(UUID playerUUID){
+        return CompletableFuture.supplyAsync(() -> {
+        	        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_GET_PLAYER_INCOME)) {
+                	
+                    query.setString(1, playerUUID.toString());
+
+                    try (ResultSet result = query.executeQuery()) {
+                    	result.last();
+                    	if(result.getRow() > 0) {
+                    		return result.getInt(1);
+                    	}
+                    	else {
+                    		// player must not have a ledger
+                    		return -1;
+                    	}
+                    }
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return 0;
+        });
+    }
     /**
      * Withdraws a specified amount of money from a player's ledger
      * 
