@@ -12,6 +12,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.block.DoubleChest;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.enchantments.Enchantment;
@@ -29,6 +30,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BannerMeta;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.MapMeta;
@@ -51,7 +53,7 @@ public class ShopListener implements Listener{
 	
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
 	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.AQUA + "Don't forget to lock your chest to protect your shop's inventory!";
-	
+	private final String MSG_ERROR_SHULKER_CONTAINS_ITEM = "We're sorry, but you cannot sell shulkers containing items.\nTry again with an empty shulker box.";
 	private DukesMart plugin;
 	
 	private HashMap<String, Location>   signSelectedMap  = new HashMap<String, Location>();
@@ -159,42 +161,35 @@ public class ShopListener implements Listener{
                 		 * to sell.
                 		 */
                 		if(shopSignHasNoItem(sign)) {
-
+                			
                 			ItemStack itemToSell = player.getInventory().getItemInMainHand().clone();
-                			XMaterial itemMat = XMaterial.matchXMaterial(itemToSell);
                 			
                 			// if player has something in hand (and is owner) set the shop's item
                 			if(!itemIsAir(itemToSell) && playerIsOwner(player, signLines[3])) {
-                				String itemDisplayName = "";
-                				
-                				// Custom/display names
-                				if(itemToSell.getItemMeta().hasDisplayName()) {
-                					itemDisplayName = ChatColor.ITALIC + itemToSell.getItemMeta().getDisplayName();
-                				}
-                				// Written book names
-                				else if(itemToSell.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
-                					BookMeta bookmeta = (BookMeta) itemToSell.getItemMeta();
-                					if(bookmeta.hasTitle()) {
-                						itemDisplayName = ChatColor.ITALIC + bookmeta.getTitle();
-                					}
-                				}
-                				// Potion names
-                				else if(itemIsPotion(itemToSell)) {
-                					itemDisplayName = ChatColor.DARK_AQUA + getPotionName(itemToSell);
-                				}
-                				else {
-                					itemDisplayName = materialPrettyPrint(itemMat.parseMaterial());
-                				}
-                				
-                				sign.setLine(1, itemDisplayName);
-	                			sign.update();
             					// TODO: add logic to remove items from filled Shulker
-            					
+            					if(itemIsShulkerBox(itemToSell)) {
+            						if(itemToSell.getItemMeta() instanceof BlockStateMeta) {
+            							BlockStateMeta bsm = (BlockStateMeta) itemToSell.getItemMeta();
+            							if(bsm.getBlockState() instanceof ShulkerBox) {
+	            							ShulkerBox shulkerBox = (ShulkerBox) bsm.getBlockState();
+	            							Inventory shulkerContents = shulkerBox.getInventory();
+	            							for(ItemStack i : shulkerContents.getContents()) {
+	            								if(i != null) {
+	            									sendError(player, this.MSG_ERROR_SHULKER_CONTAINS_ITEM);
+	            									return;
+	            								}
+	            							}
+            							}
+            						}
+            					}
                 				// if player has a writable book, strip any unfinished writing from it
             					if(itemIsWrittenBook(itemToSell)) {
                 					itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
                 				}
                 				
+                				sign.setLine(1, getItemDisplayName(itemToSell));
+	                			sign.update();
+	                			
             					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
             						if(player.isOnline()) {
 		                				player.sendMessage(this.MSG_SHOP_CREATION_SUCCESS);
@@ -211,16 +206,14 @@ public class ShopListener implements Listener{
                 			// In the map, store location of the shop the player has selected.
                 			if( playerSelected == null || !playerSelected.equals(shopLocation)) {
                 				this.signSelectedMap.put(playerUID, shopLocation);
-                				player.sendMessage(ChatColor.GREEN + " Shop selected.");
                 				
                 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(result ->{
                 					if(player.isOnline() && result != null) {
+                						player.sendMessage(ChatColor.GREEN + " Shop selected.");
+                						
 	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
 	                						displayShopInformation(player, result);
 	                					});
-                					}
-                					else {
-                						player.sendMessage("Shop at location is NULL");
                 					}
                 				});			
                 			}
@@ -230,6 +223,7 @@ public class ShopListener implements Listener{
 			                	// from the DB
 			                	this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
 			                		ItemStack itemToBuy = shop.getItem();
+			                		itemToBuy.setAmount(shop.getQuantity());
 			                		
 			                		//itemToBuy.setAmount(shop.getQuantity());
 			                		Inventory storeStock = chest.getInventory();
@@ -239,8 +233,8 @@ public class ShopListener implements Listener{
 			                		boolean hasStock = false;
 			                		
 			                		if(itemIsWrittenBook(itemToBuy)) {
-			                			ItemStack writable_book = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
-			                			hasStock = shopChestContainsItem(storeStock, writable_book, shop);
+			                			ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
+			                			hasStock = shopChestContainsItem(storeStock, writableBook, shop);
 			                		}
 			                		else {
 			                			hasStock = shopChestContainsItem(storeStock, itemToBuy, shop);
@@ -252,13 +246,11 @@ public class ShopListener implements Listener{
 			                				PlayerInventory pi = player.getInventory();
 			                				
 				                			if(pi.containsAtLeast(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL), shop.getPrice())){
-					                			itemToBuy.setAmount(shop.getQuantity());
-					                			
-					                			// remove said items from the chest
+					                			// remove the items from the chest
 					                			if(itemIsWrittenBook(itemToBuy)) {
-					                				ItemStack writable_book = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
-					                				writable_book.setAmount(shop.getQuantity());
-					                				storeStock.removeItem(writable_book);
+					                				ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
+					                				writableBook.setAmount(shop.getQuantity());
+					                				storeStock.removeItem(writableBook);
 					                			}
 					                			else {
 					                				storeStock.removeItem(itemToBuy);
@@ -295,7 +287,28 @@ public class ShopListener implements Listener{
         }
     }
     
-    /**
+    private String getItemDisplayName(ItemStack item) {
+    	// Custom/display names
+		if(item.getItemMeta().hasDisplayName()) {
+			return "" + ChatColor.ITALIC + item.getItemMeta().getDisplayName();
+		}
+		// Written book names
+		else if(itemIsWrittenBook(item)) {
+			BookMeta bookmeta = (BookMeta) item.getItemMeta();
+			if(bookmeta.hasTitle()) {
+				return "" + ChatColor.ITALIC + bookmeta.getTitle();
+			}
+		}
+		// Potion names
+		else if(itemIsPotion(item)) {
+			return "" + ChatColor.DARK_AQUA + getPotionName(item);
+		}
+
+		XMaterial itemMaterial = XMaterial.matchXMaterial(item);
+		return materialPrettyPrint(itemMaterial.parseMaterial());
+	}
+
+	/**
      * Updates a sign's text to reflect any changes,
      * such as item or owner's name
      * 
@@ -409,7 +422,7 @@ public class ShopListener implements Listener{
     	for( String word : words) {
     		output += word.substring(0,1).toUpperCase() + word.substring(1).toLowerCase() + " ";
     	}
-    	
+    	output = output.trim();
     	return output;
     }
     
@@ -702,6 +715,10 @@ public class ShopListener implements Listener{
     
     private boolean itemIsFilledMap(ItemStack item) {
     	return item != null && item.getType().equals(XMaterial.FILLED_MAP.parseMaterial());
+    }
+    
+    private boolean itemIsShulkerBox(ItemStack item) {
+    	return item != null && item.getType().name().contains("SHULKER_BOX");
     }
     
     private String getPotionName(ItemStack potion) {
