@@ -25,6 +25,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 	private final String MSG_ADMIN_PRINT_PLAYER_BALANCE = "" + ChatColor.AQUA + "%s's balance is $%d";
 	private final String MSG_ADMIN_PLAYER_NO_LEDGER = "" + ChatColor.AQUA + "%s does not have a ledger";
 	private final String MSG_ERROR_ADMIN_PLAYER_NOT_EXIST = "" + ChatColor.RED + "%s has not played before, or does not exist";
+	private final String PLUGIN_BANNER = "" + ChatColor.GOLD + "----------------[ DukesMart ]----------------";
 	
 	public ShopCommandExecutor(DukesMart plugin) {
 		this.plugin = plugin;
@@ -92,7 +93,6 @@ public class ShopCommandExecutor implements CommandExecutor{
 	
 	private void showHelp(Player player) {
 		String[] commandHelpBase = {
-			ChatColor.GOLD + "----------------[ DukesMart ]----------------",
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " withdraw ($)" + ChatColor.GRAY + ": Removes money from your ledger",
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance" + ChatColor.GRAY + ": Check your ledger balance"
 		};
@@ -103,6 +103,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 		};
 			
 		if(player.isOnline()) {
+			player.sendMessage(this.PLUGIN_BANNER);
 			player.sendMessage(commandHelpBase);
 			
 			if(player.hasPermission("dukesmart.shop.admin")) {
@@ -132,7 +133,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 				if(result > 0) {
 					PlayerInventory inventory = player.getInventory();
 					
-					ItemStack redeemedCurrency = plugin.SHOP_CURRENCY_XMATERIAL.parseItem();
+					ItemStack redeemedCurrency = this.plugin.SHOP_CURRENCY_XMATERIAL.parseItem();
 					
 					Bukkit.getScheduler().runTask(this.plugin, () -> {
 						int stackSize    = redeemedCurrency.getMaxStackSize();

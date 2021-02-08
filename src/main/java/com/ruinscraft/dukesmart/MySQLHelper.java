@@ -157,7 +157,7 @@ public class MySQLHelper {
         	// separate world/coordinate data
         	String world = shop.getWorld();
         	short x = (short) shop.getXLocation();
-        	byte  y = (byte)  shop.getYLocation();
+        	short y = (short) shop.getYLocation();
         	short z = (short) shop.getZLocation();
         	
         	if(shop.playerOwnsShop(player)) {
@@ -192,21 +192,20 @@ public class MySQLHelper {
     public CompletableFuture<Boolean> registerShop(Player player, Sign shopSign, ItemStack item) {
     	return CompletableFuture.supplyAsync(() -> {
 	    	try(Connection connection = getConnection()){
-	    		
-	    		
+
 	    		// inputs
 	    		Location shopLocation = shopSign.getLocation();
 	    		String player_uuid = player.getUniqueId().toString();
 	    		String world = shopLocation.getWorld().getName();
 	    		short loc_x = (short) shopLocation.getX();
-	    		byte loc_y = (byte) shopLocation.getY();
+	    		short loc_y = (short) shopLocation.getY();
 	    		short loc_z = (short) shopLocation.getZ();
 	    		String material = item.getType().name();
 	    		
 	    		String[] tokens = shopSign.getLine(2).split(" ");
 	    		int quantity = Integer.parseInt(tokens[0]);
 	    		int price = Integer.parseInt(tokens[2].substring(1));
-	    		item.setAmount(1);
+	    		item.setAmount(64);
 	    		// TODO: set item durability to 100%
 	    		
 	    		Map<String, Object> item_serial = item.serialize();

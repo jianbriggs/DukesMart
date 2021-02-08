@@ -50,6 +50,7 @@ public class ShopListener implements Listener{
 	private final String SHOP_SIGN_OWNER_COLOR  = "" + ChatColor.DARK_BLUE;
 	
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
+	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.AQUA + "Don't forget to lock your chest to protect your shop's inventory!";
 	
 	private DukesMart plugin;
 	
@@ -118,7 +119,7 @@ public class ShopListener implements Listener{
     			evt.setLine(1, SHOP_SIGN_NO_ITEM);
 	    		evt.setLine(3, SHOP_SIGN_OWNER_COLOR + player.getName());
 
-	    		player.sendMessage(ChatColor.AQUA + "Sign shop created! Now right-click the sign with an item to assign it.");
+	    		player.sendMessage(ChatColor.AQUA + "Hold an item you want to sell and right-click the sign to finish setup.");
 	    	}
     	}
     }
@@ -159,31 +160,33 @@ public class ShopListener implements Listener{
                 		 */
                 		if(shopSignHasNoItem(sign)) {
 
-                			ItemStack itemToSell = player.getInventory().getItemInMainHand();
+                			ItemStack itemToSell = player.getInventory().getItemInMainHand().clone();
                 			XMaterial itemMat = XMaterial.matchXMaterial(itemToSell);
                 			
                 			// if player has something in hand (and is owner) set the shop's item
                 			if(!itemIsAir(itemToSell) && playerIsOwner(player, signLines[3])) {
+                				String itemDisplayName = "";
                 				
                 				// Custom/display names
                 				if(itemToSell.getItemMeta().hasDisplayName()) {
-                					sign.setLine(1, ChatColor.ITALIC + itemToSell.getItemMeta().getDisplayName());
+                					itemDisplayName = ChatColor.ITALIC + itemToSell.getItemMeta().getDisplayName();
                 				}
                 				// Written book names
                 				else if(itemToSell.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial())) {
                 					BookMeta bookmeta = (BookMeta) itemToSell.getItemMeta();
                 					if(bookmeta.hasTitle()) {
-                						sign.setLine(1, ChatColor.ITALIC + bookmeta.getTitle());
+                						itemDisplayName = ChatColor.ITALIC + bookmeta.getTitle();
                 					}
                 				}
                 				// Potion names
                 				else if(itemIsPotion(itemToSell)) {
-                					sign.setLine(1, ChatColor.DARK_AQUA + getPotionName(itemToSell));
+                					itemDisplayName = ChatColor.DARK_AQUA + getPotionName(itemToSell);
                 				}
                 				else {
-                					sign.setLine(1, materialPrettyPrint(itemMat.parseMaterial()));
+                					itemDisplayName = materialPrettyPrint(itemMat.parseMaterial());
                 				}
                 				
+                				sign.setLine(1, itemDisplayName);
 	                			sign.update();
             					// TODO: add logic to remove items from filled Shulker
             					
@@ -193,7 +196,10 @@ public class ShopListener implements Listener{
                 				}
                 				
             					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
-	                				player.sendMessage(this.MSG_SHOP_CREATION_SUCCESS);
+            						if(player.isOnline()) {
+		                				player.sendMessage(this.MSG_SHOP_CREATION_SUCCESS);
+		                				player.sendMessage(this.MSG_SHOP_SECURITY_WARNING);
+            						}
 	                			});	
                 			}
                 		}
