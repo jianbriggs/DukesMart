@@ -20,6 +20,8 @@ import org.bukkit.Location;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.io.BukkitObjectInputStream;
 import org.bukkit.util.io.BukkitObjectOutputStream;
 
@@ -205,8 +207,17 @@ public class MySQLHelper {
 	    		String[] tokens = shopSign.getLine(2).split(" ");
 	    		int quantity = Integer.parseInt(tokens[0]);
 	    		int price = Integer.parseInt(tokens[2].substring(1));
-	    		item.setAmount(64);
-	    		// TODO: set item durability to 100%
+	    		item.setAmount(1);
+	    		ItemMeta meta = item.getItemMeta();
+	    		
+	    		// if the item can be damaged, we need to set the damage to 0
+	    		if(meta instanceof Damageable) {
+	    			Damageable damageData = (Damageable) meta;
+	    			damageData.setDamage(0);
+	    		}
+	    		
+	    		// update meta changes
+	    		item.setItemMeta(meta);
 	    		
 	    		Map<String, Object> item_serial = item.serialize();
 	    		String item_serial_base64 = itemTo64(item);
