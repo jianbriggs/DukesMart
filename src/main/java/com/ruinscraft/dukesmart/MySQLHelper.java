@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class MySQLHelper {
 	
 	//private final String STR_TOP_TEN_LISTING = ChatColor.DARK_AQUA + "%s " + ChatColor.GRAY + "-" + ChatColor.GOLD + " $%d";
 	private final String STR_TOP_TEN_LISTING = ChatColor.GOLD + "$%d" + ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + "%s";
+	private final String STR_VIEW_TRANSACTION = ChatColor.AQUA + "%s" + ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + "%s";
 	
 	private final String SQL_CREATE_TABLE_SHOPS = "CREATE TABLE IF NOT EXISTS dukesmart_shops ("
 												+ " shop_id int(11) NOT NULL,"
@@ -64,8 +66,8 @@ public class MySQLHelper {
 	
 	private final String SQL_DELETE_SHOP = "DELETE FROM dukesmart_shops WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ? AND player_uuid = ?";
 
-	private final String SQL_CREATE_SHOP = "INSERT INTO dukesmart_shops (player_uuid, world, location_x, location_y, location_z,"
-									     + " material, quantity, price, item_serialization) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	private final String SQL_CREATE_SHOP = "INSERT INTO dukesmart_shops (shop_id, player_uuid, world, location_x, location_y, location_z,"
+									     + " material, quantity, price, item_serialization) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 									     + " ON DUPLICATE KEY UPDATE player_uuid = ?, material = ?, quantity = ?, price = ?, item_serialization = ?";
 	
 	
@@ -81,6 +83,8 @@ public class MySQLHelper {
 	private final String SQL_LOG_TRANSACTION = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
 	
 	private final String SQL_VIEW_TOP_TEN = "SELECT player_uuid, total_earned FROM dukesmart_ledgers ORDER BY total_earned DESC LIMIT 10";
+	
+	private final String SQL_VIEW_RECENT_TRANSACTIONS = "SELECT buyer_uuid, purchase_date FROM dukesmart_transactions WHERE shop_id = ? ORDER BY purchase_date DESC LIMIT 10";
 	
 	public MySQLHelper(String host, int port, String database, String username, String password) {
 		this.host = host;
@@ -141,7 +145,7 @@ public class MySQLHelper {
                     
                     try (ResultSet result = query.executeQuery()) {
                     	if(result.next()) {
-	                        int s_id = result.getInt(1);
+	                        String s_id = result.getString(1);
 	                    	String s_uuid  = result.getString(2);
 	                        short  s_quantity = result.getShort(4);
 	                        int    s_price = result.getInt(5);
@@ -228,29 +232,41 @@ public class MySQLHelper {
 	    		// update meta changes
 	    		item.setItemMeta(meta);
 	    		
-	    		Map<String, Object> item_serial = item.serialize();
 	    		String item_serial_base64 = itemTo64(item);
 	    		
-	    		MessageDigest md = MessageDigest.getInstance("MD5");
-	    	    md.update(item_serial.toString().getBytes());
-	
+	    		// generate shop id from player UUID, material name, and current time stamp
+	    	    Instant timestamp = Instant.now();
+	    	    String shop_id_plain = player.getUniqueId().toString() + material +  timestamp.toString();
+	    	    MessageDigest md = MessageDigest.getInstance("MD5");
+	    	    md.update(shop_id_plain.getBytes());
+	    	    byte[] digest = md.digest();
+	    	    char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    	        char[] hexChars = new char[digest.length * 2];
+    	        for (int j = 0; j < digest.length; j++) {
+    	            int v = digest[j] & 0xFF;
+    	            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+    	            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+    	        }
+    	        String shop_id = new String(hexChars);
+    	        
 	            try(PreparedStatement query = connection.prepareStatement(this.SQL_CREATE_SHOP)){
-		            query.setString(1, player_uuid);
-		            query.setString(2, world);
-		            query.setShort(3, loc_x);
-		            query.setShort(4, loc_y);
-		            query.setShort(5, loc_z);
-		            query.setString(6, material);
-		            query.setInt(7, quantity);
-		            query.setInt(8, price);
-		            query.setString(9, item_serial_base64);
+	            	query.setString(1, shop_id);
+		            query.setString(2, player_uuid);
+		            query.setString(3, world);
+		            query.setShort(4, loc_x);
+		            query.setShort(5, loc_y);
+		            query.setShort(6, loc_z);
+		            query.setString(7, material);
+		            query.setInt(8, quantity);
+		            query.setInt(9, price);
+		            query.setString(10, item_serial_base64);
 		            
 		            // duplicate
-		            query.setString(10, player_uuid);
-		            query.setString(11, material);
-		            query.setInt(12, quantity);
-		            query.setInt(13, price);
-		            query.setString(14, item_serial_base64);
+		            query.setString(11, player_uuid);
+		            query.setString(12, material);
+		            query.setInt(13, quantity);
+		            query.setInt(14, price);
+		            query.setString(15, item_serial_base64);
 
 		            if(query.executeUpdate() > 0) {
 		            	return true;
@@ -284,7 +300,7 @@ public class MySQLHelper {
                 try (PreparedStatement query = connection.prepareStatement(this.SQL_LOG_TRANSACTION)) {
                 	
                     query.setString(1, buyer.getUniqueId().toString());
-                    query.setInt(2, shop.getID());
+                    query.setString(2, shop.getID());
                     
                     if( query.executeUpdate() > 0 ) {
                     	transactionComplete = true;
@@ -485,6 +501,36 @@ public class MySQLHelper {
         });
     }
     
+    /**
+     * Returns 10 recent transactions for a given shop, in descending order
+     * 
+     * @return ArrayList containing formatted strings, or null on error
+     */
+    public CompletableFuture<ArrayList<String>> viewRecentTransactions(Shop shop){
+        return CompletableFuture.supplyAsync(() -> {
+        	        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_VIEW_RECENT_TRANSACTIONS)) {
+                	query.setString(1, shop.getID());
+                    try (ResultSet result = query.executeQuery()) {
+                    	ArrayList<String> recent= new ArrayList<String>();
+                    	while(result.next()) {
+                    		String playerName = Bukkit.getOfflinePlayer(UUID.fromString(result.getString(1))).getName();
+                    		//topTen.add(String.format(this.STR_TOP_TEN_LISTING, playerName, result.getInt(2)));
+                    		recent.add(String.format(this.STR_VIEW_TRANSACTION, result.getString(2), playerName));
+                    	}
+                    	return recent;
+                    }
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return null;
+        });
+    }
     private String itemTo64(ItemStack stack) throws IllegalStateException {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

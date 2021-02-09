@@ -25,6 +25,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 	private final String MSG_ADMIN_PRINT_PLAYER_BALANCE = "" + ChatColor.AQUA + "%s's balance is $%d";
 	private final String MSG_ADMIN_PLAYER_NO_LEDGER = "" + ChatColor.AQUA + "%s does not have a ledger";
 	private final String MSG_ERROR_ADMIN_PLAYER_NOT_EXIST = "" + ChatColor.RED + "%s has not played before, or does not exist";
+	private final String MSG_ERROR_ADMIN_NO_SHOP_SELECTED = "" + ChatColor.RED + "You need to select a shop before running this command";
 	private final String PLUGIN_BANNER = "" + ChatColor.GOLD + "----------------[ DukesMart ]----------------";
 	
 	public ShopCommandExecutor(DukesMart plugin) {
@@ -82,6 +83,23 @@ public class ShopCommandExecutor implements CommandExecutor{
 				case "top":
 					viewTopTen(player);
 					break;
+				case "view":
+				case "v":
+					if(player.hasPermission("dukesmart.shop.admin") && args.length >= 2) {
+						Shop selectedShop = this.plugin.getSelectedShopController().getSelection(player);
+						if(selectedShop == null) {
+							player.sendMessage(this.MSG_ERROR_ADMIN_NO_SHOP_SELECTED);
+						}
+						else {
+							if(args[1].compareToIgnoreCase("recent") == 0) {
+								adminViewRecentTransactions(player, selectedShop);
+							}
+						}
+					}
+					else {
+						player.sendMessage(this.MSG_ERROR_NO_PERMISSION);
+					}
+					break;
 				default:
 					showHelp(player);
 					break;
@@ -102,8 +120,9 @@ public class ShopCommandExecutor implements CommandExecutor{
 		};
 		
 		String[] commandHelpAdmin = {
-		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view [recent|oldest]" + ChatColor.GRAY + ": View transactions for a shop",
-		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance (player)" + ChatColor.GRAY + ": Check a player's ledger balance"
+		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view recent" + ChatColor.GRAY + ": View ten most recent transactions for a shop",
+		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view (player)" + ChatColor.GRAY + ": View ten most recent transactions made by a player at a shop",
+		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance (player)" + ChatColor.GRAY + ": Check a player's ledger balance"    
 		};
 			
 		if(player.isOnline()) {
@@ -204,6 +223,20 @@ public class ShopCommandExecutor implements CommandExecutor{
 		}
 	}
 	
+	private void adminViewRecentTransactions(Player caller, Shop shop) {
+		this.plugin.getMySQLHelper().viewRecentTransactions(shop).thenAccept(transactions -> {
+			if(caller.isOnline()) {
+				caller.sendMessage(PLUGIN_BANNER);
+				caller.sendMessage(ChatColor.AQUA + "Viewing ten recent transaction for selected shop");
+				caller.sendMessage(" ");
+				byte i = 1;
+				for(String t : transactions) {
+					caller.sendMessage(i + ". " + t);
+					i++;
+				}
+			}
+		});
+	}
 	private void viewTopTen(Player caller) {
 		this.plugin.getMySQLHelper().viewTopTenEarners().thenAccept(players -> {
 			if(caller.isOnline()) {

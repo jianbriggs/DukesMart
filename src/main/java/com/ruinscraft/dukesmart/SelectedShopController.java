@@ -16,6 +16,7 @@ public class SelectedShopController {
 	public void addSelection(Player player, Shop shop) {
 		selectionMap.put(player, shop);
 	}
+	
 	public void removeSelection(Player player) {
 		if(playerHasSelection(player)) {
 			selectionMap.remove(player);
