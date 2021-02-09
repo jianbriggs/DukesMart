@@ -42,7 +42,7 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
-import jdk.internal.net.http.common.Logger;
+
 import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
@@ -461,7 +461,7 @@ public class ShopListener implements Listener{
     	}
     	
     	Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
-    	Objective obj = board.registerNewObjective("DukesMart", "Shop", "DukesMart");
+    	Objective obj = board.registerNewObjective("DukesMart", "Shop", this.PLUGIN_NAME);
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         
         ItemStack item = shop.getItem();

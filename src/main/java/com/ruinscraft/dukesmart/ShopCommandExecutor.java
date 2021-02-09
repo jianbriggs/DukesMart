@@ -79,6 +79,9 @@ public class ShopCommandExecutor implements CommandExecutor{
 						checkBalance(player);
 					}
 					break;
+				case "top":
+					viewTopTen(player);
+					break;
 				default:
 					showHelp(player);
 					break;
@@ -94,7 +97,8 @@ public class ShopCommandExecutor implements CommandExecutor{
 	private void showHelp(Player player) {
 		String[] commandHelpBase = {
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " withdraw ($)" + ChatColor.GRAY + ": Removes money from your ledger",
-			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance" + ChatColor.GRAY + ": Check your ledger balance"
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance" + ChatColor.GRAY + ": Check your ledger balance",
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " top" + ChatColor.GRAY + ": View top 10 earners"
 		};
 		
 		String[] commandHelpAdmin = {
@@ -198,6 +202,20 @@ public class ShopCommandExecutor implements CommandExecutor{
 		}
 	}
 	
+	private void viewTopTen(Player caller) {
+		this.plugin.getMySQLHelper().viewTopTenEarners().thenAccept(players -> {
+			if(caller.isOnline()) {
+				caller.sendMessage(PLUGIN_BANNER);
+				caller.sendMessage(ChatColor.AQUA + "Viewing top 10 highest-earning players");
+				caller.sendMessage(" ");
+				byte i = 1;
+				for(String player : players) {
+					caller.sendMessage(i + ". " + player);
+					i++;
+				}
+			}
+		});
+	}
 	/**
 	 * Checks if a given string is a number
 	 * 

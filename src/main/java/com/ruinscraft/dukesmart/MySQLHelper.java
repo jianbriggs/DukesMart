@@ -11,11 +11,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
@@ -31,6 +34,9 @@ public class MySQLHelper {
 	private final String database;
 	private final String username;
 	private final String password;
+	
+	//private final String STR_TOP_TEN_LISTING = ChatColor.DARK_AQUA + "%s " + ChatColor.GRAY + "-" + ChatColor.GOLD + " $%d";
+	private final String STR_TOP_TEN_LISTING = ChatColor.GOLD + "$%d" + ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + "%s";
 	
 	private final String SQL_CREATE_TABLE_SHOPS = "CREATE TABLE IF NOT EXISTS dukesmart_shops ("
 												+ " shop_id int(11) NOT NULL,"
@@ -73,7 +79,9 @@ public class MySQLHelper {
 	private final String SQL_UPDATE_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = ? WHERE player_uuid = ?";
 	
 	private final String SQL_LOG_TRANSACTION = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
-
+	
+	private final String SQL_VIEW_TOP_TEN = "SELECT player_uuid, total_earned FROM dukesmart_ledgers ORDER BY total_earned DESC LIMIT 10";
+	
 	public MySQLHelper(String host, int port, String database, String username, String password) {
 		this.host = host;
 		this.port = port;
@@ -443,6 +451,37 @@ public class MySQLHelper {
             }
             
             return -1;
+        });
+    }
+    
+    /**
+     * Returns the top 10 highest earning players on the server
+     * 
+     * @return ArrayList containing formatted strings, or null on error
+     */
+    public CompletableFuture<ArrayList<String>> viewTopTenEarners(){
+        return CompletableFuture.supplyAsync(() -> {
+        	        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_VIEW_TOP_TEN)) {
+                	
+                    try (ResultSet result = query.executeQuery()) {
+                    	ArrayList<String> topTen = new ArrayList<String>();
+                    	while(result.next()) {
+                    		String playerName = Bukkit.getOfflinePlayer(UUID.fromString(result.getString(1))).getName();
+                    		//topTen.add(String.format(this.STR_TOP_TEN_LISTING, playerName, result.getInt(2)));
+                    		topTen.add(String.format(this.STR_TOP_TEN_LISTING, result.getInt(2), playerName));
+                    	}
+                    	return topTen;
+                    }
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return null;
         });
     }
     
