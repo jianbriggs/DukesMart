@@ -3,6 +3,7 @@ package com.ruinscraft.dukesmart;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.Map.Entry;
 
 import org.bukkit.Bukkit;
@@ -46,6 +47,10 @@ import org.bukkit.scoreboard.Scoreboard;
 import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
+	private DukesMart plugin;
+	
+	private HashMap<String, Location>   signSelectedMap   = new HashMap<String, Location>();
+	private HashMap<Player, BukkitTask> hideDisplayTasks  = new HashMap<Player, BukkitTask>();
 	
 	private final int HIDE_SHOP_DISPLAY_SECONDS = 15;
 	private final String SHOP_SIGN_NO_ITEM      = "" + ChatColor.WHITE + "?";
@@ -56,11 +61,7 @@ public class ShopListener implements Listener{
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
 	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.AQUA + "Don't forget to lock your chest to protect your shop's inventory!";
 	private final String MSG_ERROR_SHULKER_CONTAINS_ITEM = "We're sorry, but you cannot sell shulkers containing items.\nTry again with an empty shulker box.";
-	private DukesMart plugin;
-	
-	private HashMap<String, Location>   signSelectedMap  = new HashMap<String, Location>();
-	private HashMap<Player, BukkitTask> hideDisplayTasks = new HashMap<Player, BukkitTask>();
-	
+
     public ShopListener(DukesMart plugin) {
     	this.plugin = plugin;
     }
@@ -105,6 +106,10 @@ public class ShopListener implements Listener{
     	
     	if(signSelectedMap.containsKey(player.getUniqueId().toString())) {
     		signSelectedMap.remove(player.getUniqueId().toString());
+    	}
+    	
+    	if(this.plugin.getNotifyPlayerController().playerHasTask(player)) {
+    		this.plugin.getNotifyPlayerController().removeTask(player);
     	}
     }
     /*
@@ -157,18 +162,13 @@ public class ShopListener implements Listener{
                 	if(signIsShop(sign)) {
                 		
                 		updateSign(sign);
-                		/* 
-                		 * if the shop has a white '?' on the 2nd line,
-                		 * that means it has not been set an item/block
-                		 * to sell.
-                		 */
+
                 		if(shopSignHasNoItem(sign)) {
-                			
+                			// you must clone the item, otherwise it will be affected later
                 			ItemStack itemToSell = player.getInventory().getItemInMainHand().clone();
                 			
                 			// if player has something in hand (and is owner) set the shop's item
                 			if(!itemIsAir(itemToSell) && playerIsOwner(player, signLines[3])) {
-            					// TODO: add logic to remove items from filled Shulker
             					if(itemIsShulkerBox(itemToSell)) {
             						if(itemToSell.getItemMeta() instanceof BlockStateMeta) {
             							BlockStateMeta bsm = (BlockStateMeta) itemToSell.getItemMeta();
@@ -271,6 +271,11 @@ public class ShopListener implements Listener{
 						                			if(player.isOnline()) {
 						                				player.sendMessage(ChatColor.AQUA + "You purchased " + shop.getQuantity() + "x "
 						                						+ materialPrettyPrint(itemToBuy.getType()) + " for " + ChatColor.GOLD + "$" + shop.getPrice());
+						                				
+						                				Player owner = Bukkit.getPlayer(UUID.fromString(shop.getOwner()));
+						                				if(owner != null && owner.isOnline()) {
+						                					this.plugin.getNotifyPlayerController().addTask(owner);
+						                				}
 						                			}		
 					                			});
 				                			}
@@ -327,7 +332,7 @@ public class ShopListener implements Listener{
 		this.plugin.getMySQLHelper().getShopFromLocation(location).thenAccept(shop -> {
 			if(shop != null) {
 				Bukkit.getScheduler().runTask(this.plugin, () -> {
-					sign.setLine(3, SHOP_SIGN_OWNER_COLOR + shop.getOwnerName());
+					sign.setLine(3, this.SHOP_SIGN_OWNER_COLOR + shop.getOwnerName());
 					sign.update();
 				});	
 			}
@@ -478,7 +483,6 @@ public class ShopListener implements Listener{
         }
         
         if(itemIsWrittenBook(item)) {
-        	player.sendMessage("(Debug) Item is a written book");
         	BookMeta bookmeta = (BookMeta) meta;
         	
         	if(bookmeta.hasTitle()) {
@@ -551,7 +555,7 @@ public class ShopListener implements Listener{
         }
         
         
-        BukkitTask clear = new HideShopDisplayTask(this.plugin, player).runTaskLater(this.plugin, 20*HIDE_SHOP_DISPLAY_SECONDS);
+        BukkitTask clear = new HideShopDisplayTask(player).runTaskLater(this.plugin, 20*HIDE_SHOP_DISPLAY_SECONDS);
         this.hideDisplayTasks.replace(player, clear);
 	}
     
@@ -573,7 +577,7 @@ public class ShopListener implements Listener{
     	for( String word : words) {
     		output += word.substring(0,1).toUpperCase() + word.substring(1).toLowerCase() + " ";
     	}
-    	
+    	output = output.trim();
     	return output;
     }
     

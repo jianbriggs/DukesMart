@@ -163,6 +163,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 					});			
 					
 					player.sendMessage(String.format(this.MSG_LEDGER_WITHDRAW_AMOUNT, amount));
+					this.plugin.getNotifyPlayerController().removeTask(player);
 				}
 				else if(result < 0){
 					player.sendMessage(this.MSG_ERROR_LEDGER_NOT_ENOUGH_MONEY);
@@ -175,6 +176,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 		this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(balance -> {
         	if(player.isOnline()) {
         		player.sendMessage(String.format(this.MSG_LEDGER_PRINT_BALANCE, balance));
+        		this.plugin.getNotifyPlayerController().removeTask(player);
         	}
         });
 	}

@@ -6,11 +6,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 public class HideShopDisplayTask extends BukkitRunnable{
 	
-	private final DukesMart plugin;
 	private final Player player;
 
-	public HideShopDisplayTask(DukesMart plugin, Player player) {
-		this.plugin = plugin;
+	public HideShopDisplayTask(Player player) {
 		this.player = player;
 	}
 	
