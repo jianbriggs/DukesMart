@@ -49,7 +49,6 @@ import net.md_5.bungee.api.ChatColor;
 public class ShopListener implements Listener{
 	private DukesMart plugin;
 	
-	private HashMap<String, Location>   signSelectedMap   = new HashMap<String, Location>();
 	private HashMap<Player, BukkitTask> hideDisplayTasks  = new HashMap<Player, BukkitTask>();
 	
 	private final int HIDE_SHOP_DISPLAY_SECONDS = 15;
@@ -66,10 +65,6 @@ public class ShopListener implements Listener{
     	this.plugin = plugin;
     }
     
-	public HashMap<String, Location> getSelectedMap(){
-		return this.signSelectedMap;
-	}
-	
     @EventHandler
     /**
      * On player join, any >0 money in their shop ledger will be displayed.
@@ -104,8 +99,8 @@ public class ShopListener implements Listener{
     public void onPlayerQuit(PlayerQuitEvent evt) {
     	Player player = evt.getPlayer();
     	
-    	if(signSelectedMap.containsKey(player.getUniqueId().toString())) {
-    		signSelectedMap.remove(player.getUniqueId().toString());
+    	if(this.plugin.getSelectedShopController().playerHasSelection(player)) {
+    		this.plugin.getSelectedShopController().removeSelection(player);
     	}
     	
     	if(this.plugin.getNotifyPlayerController().playerHasTask(player)) {
@@ -141,8 +136,7 @@ public class ShopListener implements Listener{
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent evt) {
         Player player = evt.getPlayer();
-        String playerUID = player.getUniqueId().toString();
-        
+
         if (evt.getAction() == Action.RIGHT_CLICK_BLOCK) {
         	Block clickedBlock = evt.getClickedBlock();
         	
@@ -202,19 +196,18 @@ public class ShopListener implements Listener{
                 		}
                 		else{
                 			Location shopLocation = getShopLocation(sign);
-                			Location playerSelected = this.signSelectedMap.get(playerUID);
+                			Location playerSelected = this.plugin.getSelectedShopController().getSelection(player);
                 			
                 			// On right-click the player "selects" the shop.
                 			// In the map, store location of the shop the player has selected.
                 			if( playerSelected == null || !playerSelected.equals(shopLocation)) {
-                				this.signSelectedMap.put(playerUID, shopLocation);
-                				
-                				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(result ->{
-                					if(player.isOnline() && result != null) {
+                				this.plugin.getSelectedShopController().addSelection(player, shopLocation);
+                				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop ->{
+                					if(player.isOnline() && shop != null) {
                 						player.sendMessage(ChatColor.GREEN + "Shop selected.");
                 						
 	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
-	                						displayShopInformation(player, result);
+	                						displayShopInformation(player, shop);
 	                					});
                 					}
                 				});			
@@ -740,11 +733,11 @@ public class ShopListener implements Listener{
     	String name = prettyPrint(meta.getBasePotionData().getType().name());
     	
     	if(meta.getBasePotionData().isUpgraded()) {
-    		name += "II";
+    		name += " II";
     	}
     	
     	if(meta.getBasePotionData().isExtended()) {
-    		name += "(Extended)";
+    		name += " (Extended)";
     	}
     	
     	return name;

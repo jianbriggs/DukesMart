@@ -10,6 +10,7 @@ public class DukesMart extends JavaPlugin {
 	private MySQLHelper mySQLHelper;
 	private ShopListener sl;
 	private NotifyPlayerIncomeTaskController notifyController;
+	private SelectedShopController selectController;
 	
 	public final Material SHOP_CURRENCY_MATERIAL   = Material.GOLD_INGOT;
 	public final XMaterial SHOP_CURRENCY_XMATERIAL = XMaterial.GOLD_INGOT;
@@ -39,6 +40,7 @@ public class DukesMart extends JavaPlugin {
     	
     	this.sl = new ShopListener(this);
     	this.notifyController = new NotifyPlayerIncomeTaskController(this);
+    	this.selectController = new SelectedShopController(this);
     	
     	this.getCommand("shop").setExecutor(new ShopCommandExecutor(this));
     	
@@ -69,5 +71,9 @@ public class DukesMart extends JavaPlugin {
     
     public NotifyPlayerIncomeTaskController getNotifyPlayerController() {
     	return this.notifyController;
+    }
+    
+    public SelectedShopController getSelectedShopController() {
+    	return this.selectController;
     }
 }
