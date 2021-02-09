@@ -1,7 +1,9 @@
 package com.ruinscraft.dukesmart;
 
 import java.util.HashMap;
+import java.util.Map.Entry;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public class SelectedShopController {
@@ -20,6 +22,14 @@ public class SelectedShopController {
 	public void removeSelection(Player player) {
 		if(playerHasSelection(player)) {
 			selectionMap.remove(player);
+		}
+	}
+	
+	public void removeShop(Shop shop) {
+		for(Entry<Player, Shop> e : selectionMap.entrySet()) {
+			if(e.getValue().equals(shop)) {
+				selectionMap.remove(e.getKey());
+			}
 		}
 	}
 	

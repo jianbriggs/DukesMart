@@ -118,4 +118,8 @@ public class Shop {
 	public boolean playerOwnsShop(Player player) {
 		return player.getUniqueId().toString().compareTo(this.owner_uuid) == 0;
 	}
+	
+	public boolean equals(Shop shop) {
+		return this.world_name.compareTo(shop.getWorld()) == 0 && this.loc_x == shop.getXLocation() && this.loc_y == shop.getYLocation() && this.loc_z == shop.getZLocation();
+	}
 }

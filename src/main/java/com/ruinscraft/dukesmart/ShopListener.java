@@ -367,6 +367,7 @@ public class ShopListener implements Listener{
 						this.plugin.getMySQLHelper().removeShop(player, shop).thenAccept(result -> {
 							if(player.isOnline()) {
 								if(result) {
+									this.plugin.getSelectedShopController().removeShop(shop);
 									player.sendMessage(ChatColor.AQUA + "Shop removed.");
 									Bukkit.getScheduler().runTask(this.plugin, () -> {
                 						block.breakNaturally();

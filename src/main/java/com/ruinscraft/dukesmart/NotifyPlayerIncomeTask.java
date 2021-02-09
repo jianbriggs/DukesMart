@@ -8,7 +8,7 @@ import net.md_5.bungee.api.ChatColor;
 public class NotifyPlayerIncomeTask extends BukkitRunnable{
 	
 	private final Player player;
-
+	
 	public NotifyPlayerIncomeTask(Player player) {
 		this.player = player;
 	}
