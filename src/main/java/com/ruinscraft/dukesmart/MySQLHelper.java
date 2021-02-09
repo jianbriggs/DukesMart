@@ -64,7 +64,7 @@ public class MySQLHelper {
 	private final String SQL_SELECT_SHOP_FROM_LOCATION = "SELECT shop_id, player_uuid, item_serialization, quantity, price FROM dukesmart_shops"
 		     										   + " WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
 	
-	private final String SQL_DELETE_SHOP = "DELETE FROM dukesmart_shops WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ? AND player_uuid = ?";
+	private final String SQL_DELETE_SHOP = "DELETE FROM dukesmart_shops WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
 
 	private final String SQL_CREATE_SHOP = "INSERT INTO dukesmart_shops (shop_id, player_uuid, world, location_x, location_y, location_z,"
 									     + " material, quantity, price, item_serialization) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -175,24 +175,21 @@ public class MySQLHelper {
         	short y = (short) shop.getYLocation();
         	short z = (short) shop.getZLocation();
         	
-        	if(shop.playerOwnsShop(player)) {
-	            try (Connection connection = getConnection()) {
-	            	
-	                try (PreparedStatement query = connection.prepareStatement(this.SQL_DELETE_SHOP)) {
-	                    query.setString(1, world);
-	                    query.setShort(2, x);
-	                    query.setShort(3, y);
-	                    query.setShort(4, z);
-	                    query.setString(5, player.getUniqueId().toString());
-	                    
-	                    if(query.executeUpdate() > 0 ) {
-	                    	return true;
-	                    }
-	                }
-	            } catch (SQLException e) {
-	                e.printStackTrace();
-	            }
-        	}
+            try (Connection connection = getConnection()) {
+            	
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_DELETE_SHOP)) {
+                    query.setString(1, world);
+                    query.setShort(2, x);
+                    query.setShort(3, y);
+                    query.setShort(4, z);
+                    
+                    if(query.executeUpdate() > 0 ) {
+                    	return true;
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
 
         	return false;
         });

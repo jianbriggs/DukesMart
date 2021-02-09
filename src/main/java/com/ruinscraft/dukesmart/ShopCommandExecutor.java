@@ -85,7 +85,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 					break;
 				case "view":
 				case "v":
-					if(player.hasPermission("dukesmart.shop.admin") && args.length >= 2) {
+					if(player.hasPermission("dukesmart.shop.admin")) {
 						Shop selectedShop = this.plugin.getSelectedShopController().getSelection(player);
 						if(selectedShop == null) {
 							player.sendMessage(this.MSG_ERROR_ADMIN_NO_SHOP_SELECTED);
