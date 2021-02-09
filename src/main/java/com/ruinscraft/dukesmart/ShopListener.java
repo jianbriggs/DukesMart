@@ -133,17 +133,18 @@ public class ShopListener implements Listener{
      * @param evt - called Player interact event
      */
     //TODO: refactor the shit out of this
+    /*
     @EventHandler
-    public void onPlayerInteract(PlayerInteractEvent evt) {
+    public void onPlayerInteractOld(PlayerInteractEvent evt) {
         Player player = evt.getPlayer();
 
         if (evt.getAction() == Action.RIGHT_CLICK_BLOCK) {
         	Block clickedBlock = evt.getClickedBlock();
         	
             if (blockIsSign(clickedBlock)){
-            	/* a shop is defined as a sign (formatted)
-            	 * and a chest block immediately below it.
-            	 */
+            	// a shop is defined as a sign (formatted)
+            	// and a chest block immediately below it.
+            	//
                 Sign sign = (Sign) clickedBlock.getState();
                 Block block = clickedBlock.getRelative(BlockFace.DOWN, 1);
                 
@@ -291,6 +292,168 @@ public class ShopListener implements Listener{
             }
         }
     }
+    */
+    /**
+     * Revision with Shop class instead of location
+     * @param evt
+     */
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent evt) {
+        Player player = evt.getPlayer();
+
+        if (evt.getAction() == Action.RIGHT_CLICK_BLOCK) {
+        	Block clickedBlock = evt.getClickedBlock();
+        	
+            if (blockIsSign(clickedBlock)){
+            	/* a shop is defined as a sign (formatted)
+            	 * and a chest block immediately below it.
+            	 */
+                Sign sign = (Sign) clickedBlock.getState();
+                Block block = clickedBlock.getRelative(BlockFace.DOWN, 1);
+                
+                if(blockIsChest(block)) {
+                	Chest chest = (Chest) block.getState();
+                	
+                	// get store information from sign
+                	String[] signLines = sign.getLines();
+
+                	if(signIsShop(sign)) {
+                		
+                		updateSign(sign);
+
+                		if(shopSignHasNoItem(sign)) {
+                			// you must clone the item, otherwise it will be affected later
+                			ItemStack itemToSell = player.getInventory().getItemInMainHand().clone();
+                			
+                			// if player has something in hand (and is owner) set the shop's item
+                			if(!itemIsAir(itemToSell) && playerIsOwner(player, signLines[3])) {
+            					if(itemIsShulkerBox(itemToSell)) {
+            						if(itemToSell.getItemMeta() instanceof BlockStateMeta) {
+            							BlockStateMeta bsm = (BlockStateMeta) itemToSell.getItemMeta();
+            							if(bsm.getBlockState() instanceof ShulkerBox) {
+	            							ShulkerBox shulkerBox = (ShulkerBox) bsm.getBlockState();
+	            							Inventory shulkerContents = shulkerBox.getInventory();
+	            							for(ItemStack i : shulkerContents.getContents()) {
+	            								if(i != null) {
+	            									sendError(player, this.MSG_ERROR_SHULKER_CONTAINS_ITEM);
+	            									return;
+	            								}
+	            							}
+            							}
+            						}
+            					}
+                				// if player has a writable book, strip any unfinished writing from it
+            					if(itemIsWrittenBook(itemToSell)) {
+                					itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
+                				}
+                				
+                				sign.setLine(1, getItemDisplayName(itemToSell));
+	                			sign.update();
+	                			
+            					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
+            						if(player.isOnline()) {
+		                				player.sendMessage(this.MSG_SHOP_CREATION_SUCCESS);
+		                				player.sendMessage(this.MSG_SHOP_SECURITY_WARNING);
+            						}
+	                			});	
+                			}
+                		}
+                		else{
+                			Location shopLocation = getShopLocation(sign);
+                			Shop selectedShop = this.plugin.getSelectedShopController().getSelection(player);
+                			
+                			// if player has a shop selected and selected shop
+                			// matches the location of the sign, make a purchase
+                			if(selectedShop != null && selectedShop.getLocation().equals(shopLocation)){
+
+		                		// prevent players from buying from their own shop(s)
+		                		if(selectedShop.playerOwnsShop(player)) {
+		                			return;
+		                		}
+		                		
+		                		ItemStack itemToBuy = selectedShop.getItem();
+		                		itemToBuy.setAmount(selectedShop.getQuantity());
+		                		
+		                		//itemToBuy.setAmount(shop.getQuantity());
+		                		Inventory storeStock = chest.getInventory();
+		                		//itemToBuy.setAmount(shop.getQuantity());
+		                		
+		                		// check if the chest inventory contains the item
+		                		boolean hasStock = false;
+		                		
+		                		if(itemIsWrittenBook(itemToBuy)) {
+		                			ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
+		                			hasStock = shopChestContainsItem(storeStock, writableBook, selectedShop);
+		                		}
+		                		else {
+		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
+		                		}
+		                		
+		                		if(hasStock) {   			
+		                			if(playerCanStoreItem(player, itemToBuy, selectedShop.getQuantity())) {
+		                				player.updateInventory();
+		                				PlayerInventory pi = player.getInventory();
+		                				
+			                			if(pi.containsAtLeast(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL), selectedShop.getPrice())){
+				                			// remove the items from the chest
+				                			if(itemIsWrittenBook(itemToBuy)) {
+				                				ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
+				                				writableBook.setAmount(selectedShop.getQuantity());
+				                				storeStock.removeItem(writableBook);
+				                			}
+				                			else {
+				                				storeStock.removeItem(itemToBuy);
+				                			}
+				                			
+				                			pi.removeItem(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL, selectedShop.getPrice()));
+				                			// and put into the player's inventory
+				                			pi.addItem(itemToBuy);
+				                			
+				                			this.plugin.getMySQLHelper().processTransaction(player, selectedShop).thenAccept(result -> {
+					                			if(player.isOnline()) {
+					                				player.sendMessage(ChatColor.AQUA + "You purchased " + selectedShop.getQuantity() + "x "
+					                						+ materialPrettyPrint(itemToBuy.getType()) + " for " + ChatColor.GOLD + "$" + selectedShop.getPrice());
+					                				
+					                				Player owner = Bukkit.getPlayer(UUID.fromString(selectedShop.getOwner()));
+					                				if(owner != null && owner.isOnline()) {
+					                					this.plugin.getNotifyPlayerController().addTask(owner);
+					                				}
+					                			}		
+				                			});
+			                			}
+			                			else {
+			                				sendError(player, "Sorry, you do not have enough gold to buy.");
+			                			}
+		                			}
+		                			else {
+		                				sendError(player, "You do not have enough free space for this purchase.");
+		                			}
+		                		}
+		                		else {
+		                			sendError(player, "Sorry, this shop is out of stock. Come back later.");
+		                		}
+	                		}
+                			else {
+                				// player has not selected any shop
+                				// shop information must be retrieved
+                				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop ->{
+                					if(player.isOnline() && shop != null) {
+                						player.sendMessage(ChatColor.GREEN + "Shop selected.");
+                						this.plugin.getSelectedShopController().addSelection(player, shop);
+                						
+	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
+	                						displayShopInformation(player, shop);
+	                					});
+                					}
+                				});			
+                			}
+		                }
+                	}
+                }
+            }
+        }
+    }
+    
     
     private String getItemDisplayName(ItemStack item) {
     	// Custom/display names
