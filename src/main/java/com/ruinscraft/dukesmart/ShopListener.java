@@ -32,6 +32,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.BookMeta;
+import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.inventory.meta.PotionMeta;
@@ -51,6 +52,7 @@ public class ShopListener implements Listener{
 	private final String SHOP_SIGN_IDENTIFIER   = "" + ChatColor.DARK_PURPLE + "[Buy]";
 	private final String SHOP_SIGN_OWNER_COLOR  = "" + ChatColor.DARK_BLUE;
 	
+	private final String PLUGIN_NAME = ChatColor.GOLD + "DukesMart";
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
 	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.AQUA + "Don't forget to lock your chest to protect your shop's inventory!";
 	private final String MSG_ERROR_SHULKER_CONTAINS_ITEM = "We're sorry, but you cannot sell shulkers containing items.\nTry again with an empty shulker box.";
@@ -209,7 +211,7 @@ public class ShopListener implements Listener{
                 				
                 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(result ->{
                 					if(player.isOnline() && result != null) {
-                						player.sendMessage(ChatColor.GREEN + " Shop selected.");
+                						player.sendMessage(ChatColor.GREEN + "Shop selected.");
                 						
 	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
 	                						displayShopInformation(player, result);
@@ -222,6 +224,11 @@ public class ShopListener implements Listener{
 			                	// note that this will eventually be replaced with an ItemStack
 			                	// from the DB
 			                	this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
+			                		// prevent players from buying from their own shop(s)
+			                		if(shop.playerOwnsShop(player)) {
+			                			return;
+			                		}
+			                		
 			                		ItemStack itemToBuy = shop.getItem();
 			                		itemToBuy.setAmount(shop.getQuantity());
 			                		
@@ -362,26 +369,19 @@ public class ShopListener implements Listener{
 				
 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
 					if(shop != null) {
-						// If player is the owner, delete it.
-						if(shop.playerOwnsShop(player)) {
-							this.plugin.getMySQLHelper().removeShop(player, shop).thenAccept(result -> {
-								if(player.isOnline()) {
-									if(result) {
-										player.sendMessage(ChatColor.AQUA + "Shop removed.");
-										Bukkit.getScheduler().runTask(this.plugin, () -> {
-	                						block.breakNaturally();
-	                					});
-									}
-									else {
-										sendError(player, "Unable to remove shop. Try again later.");
-									}
+						this.plugin.getMySQLHelper().removeShop(player, shop).thenAccept(result -> {
+							if(player.isOnline()) {
+								if(result) {
+									player.sendMessage(ChatColor.AQUA + "Shop removed.");
+									Bukkit.getScheduler().runTask(this.plugin, () -> {
+                						block.breakNaturally();
+                					});
 								}
-							});
-							
-						}
-						else {
-							sendError(player, "You cannot remove a shop that you do not own.");	
-						}
+								else {
+									sendError(player, "Unable to remove shop. Try again later.");
+								}
+							}
+						});
 					}
 					else {
 						Bukkit.getScheduler().runTask(this.plugin, () -> {
@@ -461,7 +461,7 @@ public class ShopListener implements Listener{
     	}
     	
     	Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
-    	Objective obj = board.registerNewObjective("DukesMart", "Shop", pluginName());
+    	Objective obj = board.registerNewObjective("DukesMart", "Shop", "DukesMart");
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         
         ItemStack item = shop.getItem();
@@ -511,12 +511,26 @@ public class ShopListener implements Listener{
         		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getColor().name()) + (pattern.getPattern().name())));
         	}
         }
+        else if(itemIsEnchantedBook(item)) {
+        	player.sendMessage("(Debug) Checking enchanted book");
+        	if(item.hasItemMeta() && item.getItemMeta() instanceof EnchantmentStorageMeta) {
+        		EnchantmentStorageMeta enchantMeta = (EnchantmentStorageMeta) item.getItemMeta();
+
+        		if(enchantMeta.hasStoredEnchants()) {
+        			
+        			for(Entry<Enchantment, Integer> e : enchantMeta.getStoredEnchants().entrySet()) {
+        				String enchant = e.getKey().getKey().toString().split(":")[1];
+        	        	
+        	        	shopInfoElements.add(" - " + ChatColor.ITALIC + prettyPrint(enchant) + " " + e.getValue());
+        			}
+        		}
+        	}
+        }
         
         for(Entry<Enchantment, Integer> entry : itemEnchantments.entrySet()) {
         	String enchantmentName = entry.getKey().getKey().toString().split(":")[1];
-        	enchantmentName = enchantmentName.substring(0,1).toUpperCase() + enchantmentName.substring(1);
-        	
-        	shopInfoElements.add(" - " + ChatColor.ITALIC + enchantmentName + " " + entry.getValue());
+
+        	shopInfoElements.add(" - " + ChatColor.ITALIC + prettyPrint(enchantmentName) + " " + entry.getValue());
         } 
         shopInfoElements.add("" + ChatColor.RED + ChatColor.BOLD + "Quantity: " + ChatColor.WHITE + shop.getQuantity());
         shopInfoElements.add("" + ChatColor.RED + ChatColor.BOLD + "Cost: " + ChatColor.WHITE + shop.getPrice() + " gold");
@@ -584,14 +598,6 @@ public class ShopListener implements Listener{
 	/*
      * Helper methods below this comment.
      */
-    
-    /**
-     * Returns a formatted string representing the plugin name (DukesMart).
-     * Make sure to reset the chat color AFTER this method is called.
-     */
-    private String pluginName() {
-    	return ChatColor.GOLD + "DukesMart";
-    }
     
     /**
      * Sends an error message to the player.
@@ -719,6 +725,10 @@ public class ShopListener implements Listener{
     
     private boolean itemIsShulkerBox(ItemStack item) {
     	return item != null && item.getType().name().contains("SHULKER_BOX");
+    }
+    
+    private boolean itemIsEnchantedBook(ItemStack item) {
+    	return item != null && item.getType().equals(XMaterial.ENCHANTED_BOOK.parseMaterial());
     }
     
     private String getPotionName(ItemStack potion) {
