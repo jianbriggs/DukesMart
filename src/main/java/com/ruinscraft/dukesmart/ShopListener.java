@@ -497,22 +497,20 @@ public class ShopListener implements Listener{
         		shopInfoElements.add(" - Map #" + mapview.getId());
         	}
         }
-        else if(itemIsPotion(item)) {
+        else if(itemIsPotion(item) || itemIsTippedArrow(item)) {
         	shopInfoElements.add("" + ChatColor.AQUA + getPotionName(item));
         }
         else if(itemIsBanner(item)) {
         	BannerMeta bannerMeta = (BannerMeta) item.getItemMeta();
         	for(Pattern pattern : bannerMeta.getPatterns()) {
-        		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getColor().name()) + (pattern.getPattern().name())));
+        		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getColor().name()) + " " + prettyPrint(pattern.getPattern().name())));
         	}
         }
         else if(itemIsEnchantedBook(item)) {
-        	player.sendMessage("(Debug) Checking enchanted book");
         	if(item.hasItemMeta() && item.getItemMeta() instanceof EnchantmentStorageMeta) {
         		EnchantmentStorageMeta enchantMeta = (EnchantmentStorageMeta) item.getItemMeta();
 
-        		if(enchantMeta.hasStoredEnchants()) {
-        			
+        		if(enchantMeta.hasStoredEnchants()) {      			
         			for(Entry<Enchantment, Integer> e : enchantMeta.getStoredEnchants().entrySet()) {
         				String enchant = e.getKey().getKey().toString().split(":")[1];
         	        	
@@ -724,6 +722,10 @@ public class ShopListener implements Listener{
     
     private boolean itemIsEnchantedBook(ItemStack item) {
     	return item != null && item.getType().equals(XMaterial.ENCHANTED_BOOK.parseMaterial());
+    }
+    
+    private boolean itemIsTippedArrow(ItemStack item) {
+    	return item != null && item.getType().equals(XMaterial.TIPPED_ARROW.parseMaterial());
     }
     
     private String getPotionName(ItemStack potion) {
