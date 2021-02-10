@@ -2,6 +2,7 @@ package com.ruinscraft.dukesmart;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Map.Entry;
@@ -216,23 +217,16 @@ public class ShopListener implements Listener{
 		                		// check if the chest inventory contains the item
 		                		boolean hasStock = false;
 		                		
-		                		if(itemIsWritableBook(itemToBuy) || itemIsFinishedBook(itemToBuy)) {
+		                		if(itemIsWritableBook(itemToBuy)) {
 		                			ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
 		                			hasStock = shopChestContainsItem(storeStock, writableBook, selectedShop);
 		                		}
-		                		/*
 		                		else if(itemIsFinishedBook(itemToBuy)) {
-		                			player.sendMessage("(Debug) Looks like item is a finished book");
-
-		                			BookMeta meta = (BookMeta) itemToBuy.getItemMeta();
-
-		                			meta.setGeneration(Generation.COPY_OF_ORIGINAL);
-		                			itemToBuy.setItemMeta(meta);
-		                			
-		                			ItemStack writtenBoo
-		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
+		                			itemToBuy = shopChestFindBook(storeStock, itemToBuy, selectedShop);
+		                			if(itemToBuy != null) {
+		                				hasStock = true;
+		                			}
 		                		}
-		                		*/
 		                		else {
 		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
 		                		}
@@ -243,18 +237,8 @@ public class ShopListener implements Listener{
 		                				PlayerInventory pi = player.getInventory();
 		                				
 			                			if(pi.containsAtLeast(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL), selectedShop.getPrice())){
-				                			// remove the items from the chest
-				                			if(itemIsFinishedBook(itemToBuy)) {
-				                				BookMeta meta = (BookMeta) itemToBuy.getItemMeta();
-				                				meta.setGeneration(Generation.COPY_OF_ORIGINAL);
-				                				itemToBuy.setItemMeta(meta);
-				                				
-				                				ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
-				                				storeStock.removeItem(writableBook);
-				                			}
-				                			else {
-				                				storeStock.removeItem(itemToBuy);
-				                			}
+
+			                				storeStock.removeItem(itemToBuy);
 				                			
 			                				//storeStock.removeItem(itemToBuy);
 			                				
@@ -264,8 +248,9 @@ public class ShopListener implements Listener{
 				                			
 				                			this.plugin.getMySQLHelper().processTransaction(player, selectedShop).thenAccept(result -> {
 					                			if(player.isOnline()) {
+					                				Material itemType = selectedShop.getItem().getType();
 					                				player.sendMessage(ChatColor.AQUA + "You purchased " + selectedShop.getQuantity() + "x "
-					                						+ materialPrettyPrint(itemToBuy.getType()) + " for " + ChatColor.GOLD + "$" + selectedShop.getPrice());
+					                						+ materialPrettyPrint(itemType) + " for " + ChatColor.GOLD + "$" + selectedShop.getPrice());
 					                				
 					                				Player owner = Bukkit.getPlayer(UUID.fromString(selectedShop.getOwner()));
 					                				if(owner != null && owner.isOnline()) {
@@ -368,7 +353,92 @@ public class ShopListener implements Listener{
 		
 		return false;
 	}
-
+	
+	/**
+	 * Special finding method for checking book existence
+	 * @param storeStock
+	 * @param itemToBuy
+	 * @param shop
+	 * @return ItemStack represening correct book in chest, null on failure
+	 */
+	private ItemStack shopChestFindBook(Inventory storeStock, ItemStack itemToBuy, Shop shop) {
+		// special check for written books
+		// this part does not check for quantity, just
+		// that the item itself exists somewhere
+		if(itemIsFinishedBook(itemToBuy)) {
+			ItemStack[] chestItems = storeStock.getContents();
+			boolean success = true;
+			for(int i = 0; i < chestItems.length; i++) {
+				ItemStack temp = chestItems[i];
+				// if the item in chest is 
+				if(itemIsFinishedBook(temp)) {
+					// compare values
+					BookMeta tempMeta = (BookMeta) temp.getItemMeta();
+					BookMeta buyMeta  = (BookMeta) itemToBuy.getItemMeta();
+					
+					if(tempMeta.hasAuthor() && tempMeta.hasTitle() && tempMeta.hasPages()) {
+						if(tempMeta.getAuthor().compareTo(buyMeta.getAuthor()) != 0) {
+							success = false;
+							continue;
+						}
+						
+						if(tempMeta.getTitle().compareTo(buyMeta.getTitle()) != 0) {
+							success = false;
+							continue;
+						}
+						
+						if(tempMeta.getPageCount() != buyMeta.getPageCount()) {
+							success = false;
+							continue;
+						}
+						
+						// remove this block if you want chests to check for original OR copies
+						if(tempMeta.hasGeneration() && tempMeta.getGeneration() != Generation.COPY_OF_ORIGINAL) {
+							success = false;
+							continue;
+						}
+						////
+						
+						List<String> tempPages = tempMeta.getPages();
+						List<String> buyPages  = buyMeta.getPages();
+						
+						for(int j = 0; j < tempPages.size(); j++) {
+							if(tempPages.get(j).compareTo(buyPages.get(j)) != 0) {
+								success = false;
+								break;
+							}
+						}
+						
+						if(success) {
+							itemToBuy = chestItems[i].clone();
+							itemToBuy.setAmount(1);
+							break;
+						}
+					}
+				}
+				success = true;
+			}
+		}
+		
+		if(storeStock instanceof DoubleChestInventory) {
+			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
+			if(dci.getLeftSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
+				storeStock = dci.getLeftSide();
+				return itemToBuy;
+			}
+			else if(dci.getRightSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
+				storeStock = dci.getRightSide();
+				return itemToBuy;
+			}
+		}
+		else{
+			if(storeStock.containsAtLeast(itemToBuy, shop.getQuantity())) {
+				return itemToBuy;
+			}
+		}
+		
+		return null;
+	}
 	@EventHandler
     public void onBlockBreak(BlockBreakEvent evt) {
     	Player player = evt.getPlayer();

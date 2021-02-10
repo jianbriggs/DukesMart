@@ -228,7 +228,7 @@ public class MySQLHelper {
 	    			Damageable damageData = (Damageable) meta;
 	    			damageData.setDamage(0);
 	    		}
-	    		
+
 	    		// update meta changes
 	    		item.setItemMeta(meta);
 	    		
