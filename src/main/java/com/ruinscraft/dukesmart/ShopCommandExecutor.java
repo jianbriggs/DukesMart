@@ -91,9 +91,27 @@ public class ShopCommandExecutor implements CommandExecutor{
 							player.sendMessage(this.MSG_ERROR_ADMIN_NO_SHOP_SELECTED);
 						}
 						else {
-							if(args[1].compareToIgnoreCase("recent") == 0) {
+							if(args.length > 2 && args[1].compareToIgnoreCase("recent") == 0) {
 								adminViewRecentTransactions(player, selectedShop);
 							}
+						}
+					}
+					else {
+						player.sendMessage(this.MSG_ERROR_NO_PERMISSION);
+					}
+					break;
+				case "history":
+				case "his":
+					if(player.hasPermission("dukesmart.shop.admin")) {
+						if(args.length >= 2) {
+							String playerName = "";
+							if(args[1].length() > 16) {
+								playerName = args[1].substring(0, 16);
+							}
+							else {
+								playerName = args[1];
+							}
+							adminCheckPlayerHistory(player, playerName);
 						}
 					}
 					else {
@@ -121,7 +139,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 		
 		String[] commandHelpAdmin = {
 		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view recent" + ChatColor.GRAY + ": View ten most recent transactions for a shop",
-		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view (player)" + ChatColor.GRAY + ": View ten most recent transactions made by a player at a shop",
+		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " history (player)" + ChatColor.GRAY + ": View ten most recent transactions made by a player",
 		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance (player)" + ChatColor.GRAY + ": Check a player's ledger balance"    
 		};
 			
@@ -222,12 +240,37 @@ public class ShopCommandExecutor implements CommandExecutor{
 			}
 		}
 	}
+
+	@SuppressWarnings("deprecation")
+	private void adminCheckPlayerHistory(Player caller, String playerName) {
+		OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+		
+		if(player.hasPlayedBefore()) {
+			this.plugin.getMySQLHelper().viewPlayerHistory(player.getUniqueId()).thenAccept(transactions -> {
+				if(caller.isOnline()) {
+					caller.sendMessage(PLUGIN_BANNER);
+					caller.sendMessage(ChatColor.AQUA + "Viewing ten recent transactions for player " + ChatColor.DARK_AQUA + playerName);
+					caller.sendMessage(" ");
+					byte i = 1;
+					for(String t : transactions) {
+						caller.sendMessage(i + ". " + t);
+						i++;
+					}
+				}
+	        });
+		}
+		else {
+			if(caller.isOnline()) {
+				caller.sendMessage(String.format(this.MSG_ERROR_ADMIN_PLAYER_NOT_EXIST, playerName));
+			}
+		}
+	}
 	
 	private void adminViewRecentTransactions(Player caller, Shop shop) {
 		this.plugin.getMySQLHelper().viewRecentTransactions(shop).thenAccept(transactions -> {
 			if(caller.isOnline()) {
 				caller.sendMessage(PLUGIN_BANNER);
-				caller.sendMessage(ChatColor.AQUA + "Viewing ten recent transaction for selected shop");
+				caller.sendMessage(ChatColor.AQUA + "Viewing ten recent transactions for selected shop");
 				caller.sendMessage(" ");
 				byte i = 1;
 				for(String t : transactions) {

@@ -39,6 +39,7 @@ public class MySQLHelper {
 	//private final String STR_TOP_TEN_LISTING = ChatColor.DARK_AQUA + "%s " + ChatColor.GRAY + "-" + ChatColor.GOLD + " $%d";
 	private final String STR_TOP_TEN_LISTING = ChatColor.GOLD + "$%d" + ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + "%s";
 	private final String STR_VIEW_TRANSACTION = ChatColor.AQUA + "%s" + ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + "%s";
+	private final String STR_VIEW_PLAYER_HISTORY = ChatColor.AQUA + "%s" + ChatColor.GRAY + " - Shop owner: " + ChatColor.DARK_AQUA + "%s";
 	
 	private final String SQL_CREATE_TABLE_SHOPS = "CREATE TABLE IF NOT EXISTS dukesmart_shops ("
 												+ " shop_id int(11) NOT NULL,"
@@ -85,6 +86,8 @@ public class MySQLHelper {
 	private final String SQL_VIEW_TOP_TEN = "SELECT player_uuid, total_earned FROM dukesmart_ledgers ORDER BY total_earned DESC LIMIT 10";
 	
 	private final String SQL_VIEW_RECENT_TRANSACTIONS = "SELECT buyer_uuid, purchase_date FROM dukesmart_transactions WHERE shop_id = ? ORDER BY purchase_date DESC LIMIT 10";
+	
+	private final String SQL_VIEW_PLAYER_HISTORY = "SELECT dukesmart_shops.player_uuid, purchase_date FROM dukesmart_transactions INNER JOIN dukesmart_shops ON dukesmart_shops.shop_id = dukesmart_transactions.shop_id WHERE buyer_uuid = ? ORDER BY purchase_date DESC LIMIT 10";
 	
 	public MySQLHelper(String host, int port, String database, String username, String password) {
 		this.host = host;
@@ -516,6 +519,31 @@ public class MySQLHelper {
                     		String playerName = Bukkit.getOfflinePlayer(UUID.fromString(result.getString(1))).getName();
                     		//topTen.add(String.format(this.STR_TOP_TEN_LISTING, playerName, result.getInt(2)));
                     		recent.add(String.format(this.STR_VIEW_TRANSACTION, result.getString(2), playerName));
+                    	}
+                    	return recent;
+                    }
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return null;
+        });
+    }
+
+    public CompletableFuture<ArrayList<String>> viewPlayerHistory(UUID playerUUID){
+        return CompletableFuture.supplyAsync(() -> {
+        	        	
+            try (Connection connection = getConnection()) {
+
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_VIEW_PLAYER_HISTORY)) {
+                	query.setString(1, playerUUID.toString());
+                    try (ResultSet result = query.executeQuery()) {
+                    	ArrayList<String> recent= new ArrayList<String>();
+                    	while(result.next()) {
+                    		String shopOwnerName = Bukkit.getOfflinePlayer(UUID.fromString(result.getString(1))).getName();
+                    		recent.add(String.format(this.STR_VIEW_PLAYER_HISTORY, result.getString(2), shopOwnerName));
                     	}
                     	return recent;
                     }
