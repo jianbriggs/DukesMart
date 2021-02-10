@@ -33,6 +33,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.BookMeta;
+import org.bukkit.inventory.meta.BookMeta.Generation;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.MapMeta;
@@ -176,10 +177,10 @@ public class ShopListener implements Listener{
             							}
             						}
             					}
-                				// if player has a writable book, strip any unfinished writing from it
-            					if(itemIsWrittenBook(itemToSell)) {
-                					itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
-                				}
+            					// if player has a writable book, strip any unfinished writing from it
+            					else if(itemIsWritableBook(itemToSell)) {
+            						itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
+            					}
                 				
                 				sign.setLine(1, getItemDisplayName(itemToSell));
 	                			sign.update();
@@ -215,10 +216,23 @@ public class ShopListener implements Listener{
 		                		// check if the chest inventory contains the item
 		                		boolean hasStock = false;
 		                		
-		                		if(itemIsWrittenBook(itemToBuy)) {
+		                		if(itemIsWritableBook(itemToBuy) || itemIsFinishedBook(itemToBuy)) {
 		                			ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
 		                			hasStock = shopChestContainsItem(storeStock, writableBook, selectedShop);
 		                		}
+		                		/*
+		                		else if(itemIsFinishedBook(itemToBuy)) {
+		                			player.sendMessage("(Debug) Looks like item is a finished book");
+
+		                			BookMeta meta = (BookMeta) itemToBuy.getItemMeta();
+
+		                			meta.setGeneration(Generation.COPY_OF_ORIGINAL);
+		                			itemToBuy.setItemMeta(meta);
+		                			
+		                			ItemStack writtenBoo
+		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
+		                		}
+		                		*/
 		                		else {
 		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
 		                		}
@@ -230,15 +244,20 @@ public class ShopListener implements Listener{
 		                				
 			                			if(pi.containsAtLeast(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL), selectedShop.getPrice())){
 				                			// remove the items from the chest
-				                			if(itemIsWrittenBook(itemToBuy)) {
+				                			if(itemIsFinishedBook(itemToBuy)) {
+				                				BookMeta meta = (BookMeta) itemToBuy.getItemMeta();
+				                				meta.setGeneration(Generation.COPY_OF_ORIGINAL);
+				                				itemToBuy.setItemMeta(meta);
+				                				
 				                				ItemStack writableBook = new ItemStack(XMaterial.WRITABLE_BOOK.parseMaterial());
-				                				writableBook.setAmount(selectedShop.getQuantity());
 				                				storeStock.removeItem(writableBook);
 				                			}
 				                			else {
 				                				storeStock.removeItem(itemToBuy);
 				                			}
 				                			
+			                				//storeStock.removeItem(itemToBuy);
+			                				
 				                			pi.removeItem(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL, selectedShop.getPrice()));
 				                			// and put into the player's inventory
 				                			pi.addItem(itemToBuy);
@@ -295,7 +314,7 @@ public class ShopListener implements Listener{
 			return "" + ChatColor.ITALIC + item.getItemMeta().getDisplayName();
 		}
 		// Written book names
-		else if(itemIsWrittenBook(item)) {
+		else if(itemIsFinishedBook(item)) {
 			BookMeta bookmeta = (BookMeta) item.getItemMeta();
 			if(bookmeta.hasTitle()) {
 				return "" + ChatColor.ITALIC + bookmeta.getTitle();
@@ -473,7 +492,7 @@ public class ShopListener implements Listener{
         	shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\"");
         }
         
-        if(itemIsWrittenBook(item)) {
+        if(itemIsFinishedBook(item)) {
         	BookMeta bookmeta = (BookMeta) meta;
         	
         	if(bookmeta.hasTitle()) {
@@ -696,8 +715,12 @@ public class ShopListener implements Listener{
     	return true;
     }
     
-    private boolean itemIsWrittenBook(ItemStack item) {
+    private boolean itemIsFinishedBook(ItemStack item) {
     	return item != null && item.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial());
+    }
+    
+    private boolean itemIsWritableBook(ItemStack item) {
+    	return item != null && item.getType().equals(XMaterial.WRITABLE_BOOK.parseMaterial());
     }
     
     private boolean itemIsAir(ItemStack item) {
