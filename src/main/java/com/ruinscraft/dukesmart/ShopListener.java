@@ -106,7 +106,7 @@ public class ShopListener implements Listener{
     	}
     	
     	if(this.plugin.getNotifyPlayerController().playerHasTask(player)) {
-    		this.plugin.getNotifyPlayerController().removeTask(player);
+    		this.plugin.getNotifyPlayerController().removePlayer(player);
     	}
     }
     /*
@@ -447,7 +447,7 @@ public class ShopListener implements Listener{
     	if(blockIsSign(block)) {
     		Sign sign = (Sign) block.getState();
     		
-    		if(signIsShop(sign)) {
+    		if(signIsShop(sign) && !shopSignHasNoItem(sign)) {
     			evt.setCancelled(true);
 				Location shopLocation = sign.getLocation();
 				
@@ -774,6 +774,7 @@ public class ShopListener implements Listener{
     private boolean signIsShop(Sign sign) {
     	return sign.getLine(0).equals(SHOP_SIGN_IDENTIFIER) && validateShopPrice(sign.getLine(2));
     }
+    
     /**
      * Checks if a player is the owner of a shop.
      * @param p Player object
