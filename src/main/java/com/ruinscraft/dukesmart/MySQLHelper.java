@@ -40,27 +40,36 @@ public class MySQLHelper {
 	private final String STR_TOP_TEN_LISTING = ChatColor.GOLD + "$%d" + ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + "%s";
 	private final String STR_VIEW_TRANSACTION = ChatColor.AQUA + "%s" + ChatColor.GRAY + " - " + ChatColor.DARK_AQUA + "%s";
 	private final String STR_VIEW_PLAYER_HISTORY = ChatColor.AQUA + "%s" + ChatColor.GRAY + " - Shop owner: " + ChatColor.DARK_AQUA + "%s";
-	
+
 	private final String SQL_CREATE_TABLE_SHOPS = "CREATE TABLE IF NOT EXISTS dukesmart_shops ("
-												+ " shop_id int(11) NOT NULL,"
+												+ " shop_id varchar(32) NOT NULL,"
 												+ " player_uuid char(40) NOT NULL,"
 												+ " world varchar(10) NOT NULL DEFAULT 'NORMAL',"
 												+ " location_x smallint(6) NOT NULL,"
 											    + " location_y smallint(6) NOT NULL,"
 												+ " location_z smallint(6) NOT NULL,"
 												+ " material varchar(32) NOT NULL,"
-												+ " item_serialization blob NOT NULL)";
+												+ " item_serialization blob NOT NULL,"
+												+ " quantity int(11) NOT NULL DEFAULT '0',"
+												+ " price int(11) NOT NULL DEFAULT '0',"
+												+ " PRIMARY KEY (shop_id),"
+												+ " UNIQUE KEY world (world, location_x, location_y, location_z))";
 	
 	private final String SQL_CREATE_TABLE_LEDGERS = "CREATE TABLE IF NOT EXISTS dukesmart_ledgers ("
 											  	  + " player_uuid char(40) NOT NULL,"
 											  	  + " income int(11) NOT NULL DEFAULT '0',"
-											  	  + " total_earned int(11) NOT NULL DEFAULT '0')";
+											  	  + " total_earned int(11) NOT NULL DEFAULT '0',"
+											  	  + " PRIMARY KEY(player_uuid),"
+											  	  + " UNIQUE KEY player_uuid (player_uuid))";
 	
 	private final String SQL_CREATE_TABLE_TRANSACTIONS = "CREATE TABLE IF NOT EXISTS dukesmart_transactions ("
-													   + " transaction_id int(11) NOT NULL," 
+													   + " transaction_id int(11) NOT NULL AUTO_INCREMENT," 
 													   + " buyer_uuid char(40) NOT NULL,"
-													   + " shop_id int(11) NOT NULL,"
-													   + " purchase_date datetime NOT NULL)";
+													   + " shop_id varchar(32) NOT NULL,"
+													   + " purchase_date datetime NOT NULL,"
+													   + " PRIMARY KEY (transaction_id),"
+													   + " CONSTRAINT dukesmart_transactions_ibfk_1 FOREIGN KEY (shop_id)"
+													   + " REFERENCES dukesmart_shops (shop_id) ON DELETE CASCADE ON UPDATE CASCADE)";
 	
 	private final String SQL_SELECT_SHOP_FROM_LOCATION = "SELECT shop_id, player_uuid, item_serialization, quantity, price FROM dukesmart_shops"
 		     										   + " WHERE world = ? AND location_x = ? AND location_y = ? AND location_z = ?";
@@ -111,6 +120,7 @@ public class MySQLHelper {
                 try (Statement statement = connection.createStatement()){
                 	statement.execute(this.SQL_CREATE_TABLE_TRANSACTIONS);
                 }
+                
             } catch (SQLException e) {
                 e.printStackTrace();
             }
