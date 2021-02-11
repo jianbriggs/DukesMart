@@ -1,6 +1,8 @@
 package com.ruinscraft.dukesmart;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -8,13 +10,14 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 import net.md_5.bungee.api.ChatColor;
 
-public class ShopCommandExecutor implements CommandExecutor{
+public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	private final DukesMart plugin;
 	
 	private final String MSG_ERROR_NO_PERMISSION = "" + ChatColor.RED + "You do not have permission to use that command.";
@@ -28,8 +31,20 @@ public class ShopCommandExecutor implements CommandExecutor{
 	private final String MSG_ERROR_ADMIN_NO_SHOP_SELECTED = "" + ChatColor.RED + "You need to select a shop before running this command";
 	private final String PLUGIN_BANNER = "" + ChatColor.GOLD + "----------------[ DukesMart ]----------------";
 	
+	private static List<String> tabOptions;
+	private static List<String> adminTabOptions;
+	
 	public ShopCommandExecutor(DukesMart plugin) {
 		this.plugin = plugin;
+		this.tabOptions = new ArrayList<String>();
+		this.adminTabOptions = new ArrayList<String>();
+		
+		tabOptions.add("withdraw");
+		tabOptions.add("balance");
+		tabOptions.add("top");
+		
+		adminTabOptions.add("view");
+		adminTabOptions.add("history");
 	}
 	
 	@Override
@@ -91,7 +106,7 @@ public class ShopCommandExecutor implements CommandExecutor{
 							player.sendMessage(this.MSG_ERROR_ADMIN_NO_SHOP_SELECTED);
 						}
 						else {
-							if(args.length > 2 && args[1].compareToIgnoreCase("recent") == 0) {
+							if(args.length >= 2 && args[1].compareToIgnoreCase("recent") == 0) {
 								adminViewRecentTransactions(player, selectedShop);
 							}
 						}
@@ -128,6 +143,41 @@ public class ShopCommandExecutor implements CommandExecutor{
 		}
 		
 		return true;
+	}
+	
+
+	@Override
+	public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1) {
+            for (String option : tabOptions) {
+                if (option.startsWith(args[0].toLowerCase())) {
+                    completions.add(option);
+                }
+            }
+            
+            if(sender.hasPermission("dukesmart.shop.admin")) {
+            	for (String option : adminTabOptions) {
+                    if (option.startsWith(args[0].toLowerCase())) {
+                        completions.add(option);
+                    }
+                }
+            }
+        }
+        
+        if (args.length == 2) {
+            if(args[0].equalsIgnoreCase("view") && sender.hasPermission("dukesmart.shop.admin")) {
+            	completions.add("recent");
+            }
+            else if( (args[0].equalsIgnoreCase("history") || args[0].equalsIgnoreCase("balance") )&& sender.hasPermission("dukesmart.shop.admin")) {
+            	for(Player p : Bukkit.getOnlinePlayers()) {
+            		completions.add(p.getName());
+            	}
+            }
+        }
+
+        return completions;
 	}
 	
 	private void showHelp(Player player) {

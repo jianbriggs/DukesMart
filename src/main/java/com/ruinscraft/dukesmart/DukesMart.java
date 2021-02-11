@@ -43,6 +43,7 @@ public class DukesMart extends JavaPlugin {
     	this.selectController = new SelectedShopController(this);
     	
     	this.getCommand("shop").setExecutor(new ShopCommandExecutor(this));
+    	this.getCommand("shop").setTabCompleter(this);
     	
     	Bukkit.getPluginManager().registerEvents(this.sl, this);
     	
