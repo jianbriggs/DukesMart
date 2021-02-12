@@ -40,7 +40,7 @@ public class DukesMart extends JavaPlugin {
     	
     	this.sl = new ShopListener(this);
     	this.notifyController = new NotifyPlayerIncomeTaskController(this);
-    	this.selectController = new SelectedShopController(this);
+    	this.selectController = new SelectedShopController();
     	
     	this.getCommand("shop").setExecutor(new ShopCommandExecutor(this));
     	this.getCommand("shop").setTabCompleter(this);

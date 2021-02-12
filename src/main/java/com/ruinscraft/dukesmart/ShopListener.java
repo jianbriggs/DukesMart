@@ -146,7 +146,7 @@ public class ShopListener implements Listener{
             	// and a chest block immediately below it.
                 Sign sign = (Sign) clickedBlock.getState();
                 Block block = clickedBlock.getRelative(BlockFace.DOWN, 1);
-                
+
                 if(blockIsChest(block)) {
                 	Chest chest = (Chest) block.getState();
                 	
@@ -294,22 +294,46 @@ public class ShopListener implements Listener{
     
     
     private String getItemDisplayName(ItemStack item) {
+    	ItemMeta meta = item.getItemMeta();
+    	Material mat = item.getType();
+    	
     	// Custom/display names
-		if(item.getItemMeta().hasDisplayName()) {
-			return "" + ChatColor.ITALIC + item.getItemMeta().getDisplayName();
+		if(meta.hasDisplayName()) {
+			return "" + ChatColor.ITALIC + meta.getDisplayName();
 		}
 		// Written book names
 		else if(itemIsFinishedBook(item)) {
-			BookMeta bookmeta = (BookMeta) item.getItemMeta();
-			if(bookmeta.hasTitle()) {
-				return "" + ChatColor.ITALIC + bookmeta.getTitle();
+			BookMeta bookMeta = (BookMeta) meta;
+			if(bookMeta.hasTitle()) {
+				return "" + ChatColor.ITALIC + bookMeta.getTitle();
 			}
 		}
 		// Potion names
 		else if(itemIsPotion(item)) {
-			return "" + ChatColor.DARK_AQUA + getPotionName(item);
+			return "" + ChatColor.DARK_GREEN + getPotionName(item);
 		}
-
+		// fix for raw meats
+		else if((mat.name().contains("PORK") || mat.name().contains("CHICKEN") || mat.name().contains("MUTTON") || mat.name().contains("BEEF") || mat.name().equals("RABBIT") || mat.name().contains("SALMON") || mat.name().contains("COD")) && !mat.name().contains("COOKED")) {
+			XMaterial itemMaterial = XMaterial.matchXMaterial(item);
+			return "Raw " + materialPrettyPrint(itemMaterial.parseMaterial());
+		}
+		// fix for chestplates
+		else if(mat.name().contains("CHESTPLATE")) {
+			XMaterial itemMaterial = XMaterial.matchXMaterial(item);
+			String[] temp = materialPrettyPrint(itemMaterial.parseMaterial()).split(" ");
+			return temp[0] + " Chest.";
+		}
+		// fix for green, red, and yellow dyes
+		else if(mat.name().equals("CACTUS_GREEN")) {
+			return "Green Dye";
+		}
+		else if(mat.name().equals("DANDELION_YELLOW")) {
+			return "Yellow Dye";
+		}
+		else if(mat.name().equals("ROSE_RED")) {
+			return "Red Dye";
+		}
+		
 		XMaterial itemMaterial = XMaterial.matchXMaterial(item);
 		return materialPrettyPrint(itemMaterial.parseMaterial());
 	}
@@ -359,7 +383,7 @@ public class ShopListener implements Listener{
 	 * @param storeStock
 	 * @param itemToBuy
 	 * @param shop
-	 * @return ItemStack represening correct book in chest, null on failure
+	 * @return ItemStack representing correct book in chest, null on failure
 	 */
 	private ItemStack shopChestFindBook(Inventory storeStock, ItemStack itemToBuy, Shop shop) {
 		// special check for written books

@@ -31,8 +31,8 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	private final String MSG_ERROR_ADMIN_NO_SHOP_SELECTED = "" + ChatColor.RED + "You need to select a shop before running this command";
 	private final String PLUGIN_BANNER = "" + ChatColor.GOLD + "----------------[ DukesMart ]----------------";
 	
-	private static List<String> tabOptions;
-	private static List<String> adminTabOptions;
+	private final List<String> tabOptions;
+	private final List<String> adminTabOptions;
 	
 	public ShopCommandExecutor(DukesMart plugin) {
 		this.plugin = plugin;

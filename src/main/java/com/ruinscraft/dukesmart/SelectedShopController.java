@@ -3,15 +3,12 @@ package com.ruinscraft.dukesmart;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 public class SelectedShopController {
-	private DukesMart plugin;
 	private HashMap<Player, Shop> selectionMap;
 	
-	public SelectedShopController(DukesMart plugin) {
-		this.plugin = plugin;
+	public SelectedShopController() {
 		this.selectionMap = new HashMap<Player, Shop>();
 	}
 	
