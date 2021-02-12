@@ -10,6 +10,7 @@ import java.util.Map.Entry;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Banner;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
@@ -310,7 +311,7 @@ public class ShopListener implements Listener{
 		}
 		// Potion names
 		else if(itemIsPotion(item)) {
-			return "" + ChatColor.DARK_GREEN + getPotionName(item);
+			return "" + ChatColor.DARK_RED + getPotionName(item);
 		}
 		// fix for raw meats
 		else if((mat.name().contains("PORK") || mat.name().contains("CHICKEN") || mat.name().contains("MUTTON") || mat.name().contains("BEEF") || mat.name().equals("RABBIT") || mat.name().contains("SALMON") || mat.name().contains("COD")) && !mat.name().contains("COOKED")) {
@@ -613,9 +614,20 @@ public class ShopListener implements Listener{
         else if(itemIsPotion(item) || itemIsTippedArrow(item)) {
         	shopInfoElements.add("" + ChatColor.AQUA + getPotionName(item));
         }
-        else if(itemIsBanner(item)) {
-        	BannerMeta bannerMeta = (BannerMeta) item.getItemMeta();
-        	for(Pattern pattern : bannerMeta.getPatterns()) {
+        else if(itemIsBanner(item) || itemIsShield(item)) {
+        	List<Pattern> patterns = null;
+        	
+        	if(itemIsBanner(item)) {
+	        	BannerMeta bannerMeta = (BannerMeta) item.getItemMeta();
+	        	patterns = bannerMeta.getPatterns();
+        	}
+        	else {
+                BlockStateMeta bmeta = (BlockStateMeta) item.getItemMeta();
+                Banner banner = (Banner) bmeta.getBlockState();
+                patterns = banner.getPatterns();
+        	}
+        	
+        	for(Pattern pattern : patterns) {
         		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getColor().name()) + " " + prettyPrint(pattern.getPattern().name())));
         	}
         }
@@ -824,6 +836,10 @@ public class ShopListener implements Listener{
     
     private boolean itemIsBanner(ItemStack item) {
     	return item != null && item.getType().name().contains("BANNER");
+    }
+    
+    private boolean itemIsShield(ItemStack item) {
+    	return item != null && item.getType().equals(XMaterial.SHIELD.parseMaterial());
     }
     
     private boolean itemIsPotion(ItemStack item) {
