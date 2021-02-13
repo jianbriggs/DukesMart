@@ -19,8 +19,7 @@ public class Shop {
 	private final short loc_x;
 	private final byte loc_y;
 	private final short loc_z;
-	private ItemStack item;
-	
+	private ItemStack item;	
 	private short quantity;
 	private int price;
 	

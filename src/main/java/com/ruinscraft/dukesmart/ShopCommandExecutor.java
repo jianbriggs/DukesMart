@@ -3,7 +3,6 @@ package com.ruinscraft.dukesmart;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -20,6 +19,7 @@ import net.md_5.bungee.api.ChatColor;
 public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	private final DukesMart plugin;
 	
+	private final String PLUGIN_BANNER = "" + ChatColor.GOLD + "----------------[ DukesMart ]----------------";
 	private final String MSG_ERROR_NO_PERMISSION = "" + ChatColor.RED + "You do not have permission to use that command.";
 	private final String MSG_ERROR_LEDGER_NOT_ENOUGH_MONEY = "" + ChatColor.RED + "You do not have that much in your ledger.";
 	private final String MSG_ERROR_LEDGER_INVALID_WITHDRAW = "" + ChatColor.RED + "Invalid withdraw amount!";
@@ -29,7 +29,6 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	private final String MSG_ADMIN_PLAYER_NO_LEDGER = "" + ChatColor.AQUA + "%s does not have a ledger";
 	private final String MSG_ERROR_ADMIN_PLAYER_NOT_EXIST = "" + ChatColor.RED + "%s has not played before, or does not exist";
 	private final String MSG_ERROR_ADMIN_NO_SHOP_SELECTED = "" + ChatColor.RED + "You need to select a shop before running this command";
-	private final String PLUGIN_BANNER = "" + ChatColor.GOLD + "----------------[ DukesMart ]----------------";
 	
 	private final List<String> tabOptions;
 	private final List<String> adminTabOptions;
@@ -334,7 +333,7 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 		this.plugin.getMySQLHelper().viewTopTenEarners().thenAccept(players -> {
 			if(caller.isOnline()) {
 				caller.sendMessage(PLUGIN_BANNER);
-				caller.sendMessage(ChatColor.AQUA + "Viewing top 10 highest-earning players");
+				caller.sendMessage(ChatColor.AQUA + "Viewing top ten highest-earning players");
 				caller.sendMessage(" ");
 				byte i = 1;
 				for(String player : players) {

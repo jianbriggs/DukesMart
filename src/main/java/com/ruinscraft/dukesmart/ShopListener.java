@@ -60,10 +60,15 @@ public class ShopListener implements Listener{
 	private final String SHOP_SIGN_OWNER_COLOR  = "" + ChatColor.DARK_BLUE;
 	
 	private final String PLUGIN_NAME = ChatColor.GOLD + "DukesMart";
+	private final String MSG_PLAYER_LEDGER_CREATED = ChatColor.YELLOW + "Welcome! Your " + ChatColor.GOLD + "DukesMart" + ChatColor.YELLOW + " ledger has been created! Use " + ChatColor.GOLD + "/shop" + ChatColor.YELLOW + " to view available commands.";
+	private final String MSG_PLAYER_INCOME_LAST_LOGIN = ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + "$%d" + ChatColor.YELLOW + " from your chest shops." + ChatColor.GOLD + " /shop withdraw";
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
-	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.AQUA + "Don't forget to lock your chest to protect your shop's inventory!";
+	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.BOLD + "" + ChatColor.AQUA + "Don't forget to lock your shop chest!";
 	private final String MSG_ERROR_SHULKER_CONTAINS_ITEM = "We're sorry, but you cannot sell shulkers containing items.\nTry again with an empty shulker box.";
-	private final String MSG_WARNING_ITEM_CANNOT_EXCEED = ChatColor.AQUA + "The item %s cannot exceed a stacksize of %d. Your sign has been corrected.";
+	private final String MSG_ERROR_ITEM_CANNOT_EXCEED = "The item %s cannot exceed a stack size of %d. Your sign has been corrected.";
+	private final String MSG_ERROR_NOT_ENOUGH_GOLD = "Sorry, you do not have enough gold to buy.";
+	private final String MSG_ERROR_NOT_ENOUGH_SPACE = "You do not have enough free space for this purchase.";
+	private final String MSG_ERROR_SHOP_OUT_OF_STOCK = "Sorry, this shop is out of stock. Come back later.";
 	
     public ShopListener(DukesMart plugin) {
     	this.plugin = plugin;
@@ -86,14 +91,14 @@ public class ShopListener implements Listener{
         		this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
         			if(result) {
         				Bukkit.getLogger().info("New ledger created for " + player.getName() + " (UUID: " + player.getUniqueId() + ")");;
-        				player.sendMessage(ChatColor.GREEN + "Welcome! Your DukesMart ledger has been created!");
-        				player.sendMessage(ChatColor.GREEN + "You may view your ledger balance with /shop balance or withdraw with /shop withdraw");
+        				if(player.isOnline()) {
+        					player.sendMessage(MSG_PLAYER_LEDGER_CREATED);
+        				}
         			}
         		});
         	}
         	else if(player.isOnline() && income > 0) {
-	            player.sendMessage(ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + "$" + income + ChatColor.YELLOW
-	            				   + " from your chest shops." + ChatColor.GOLD + " /shop withdraw");
+	            player.sendMessage(String.format(MSG_PLAYER_INCOME_LAST_LOGIN, income));
         	}
         });
 
@@ -152,19 +157,14 @@ public class ShopListener implements Listener{
                 if(blockIsChest(block)) {
                 	Chest chest = (Chest) block.getState();
                 	
-                	// get store information from sign
-                	String[] signLines = sign.getLines();
-
                 	if(signIsShop(sign)) {
-                		
                 		updateSign(sign);
-
                 		if(shopSignHasNoItem(sign)) {
                 			// you must clone the item, otherwise it will be affected later
                 			ItemStack itemToSell = player.getInventory().getItemInMainHand().clone();
                 			
                 			// if player has something in hand (and is owner) set the shop's item
-                			if(!itemIsAir(itemToSell) && playerIsOwner(player, signLines[3])) {
+                			if(!itemIsAir(itemToSell)) {
             					if(itemIsShulkerBox(itemToSell)) {
             						if(itemToSell.getItemMeta() instanceof BlockStateMeta) {
             							BlockStateMeta bsm = (BlockStateMeta) itemToSell.getItemMeta();
@@ -215,10 +215,8 @@ public class ShopListener implements Listener{
 		                		ItemStack itemToBuy = selectedShop.getItem();
 		                		itemToBuy.setAmount(selectedShop.getQuantity());
 		                		
-		                		//itemToBuy.setAmount(shop.getQuantity());
 		                		Inventory storeStock = chest.getInventory();
-		                		//itemToBuy.setAmount(shop.getQuantity());
-		                		
+
 		                		// check if the chest inventory contains the item
 		                		boolean hasStock = false;
 		                		
@@ -265,15 +263,15 @@ public class ShopListener implements Listener{
 				                			});
 			                			}
 			                			else {
-			                				sendError(player, "Sorry, you do not have enough gold to buy.");
+			                				sendError(player, MSG_ERROR_NOT_ENOUGH_GOLD);
 			                			}
 		                			}
 		                			else {
-		                				sendError(player, "You do not have enough free space for this purchase.");
+		                				sendError(player, MSG_ERROR_NOT_ENOUGH_SPACE);
 		                			}
 		                		}
 		                		else {
-		                			sendError(player, "Sorry, this shop is out of stock. Come back later.");
+		                			sendError(player, MSG_ERROR_SHOP_OUT_OF_STOCK);
 		                		}
 	                		}
                 			else {
@@ -831,21 +829,11 @@ public class ShopListener implements Listener{
     		sign.update();
     		
     		if(player.isOnline()) {
-    			player.sendMessage(String.format(MSG_WARNING_ITEM_CANNOT_EXCEED, item.getType().name(), maxAllowed));
+    			player.sendMessage(String.format(MSG_ERROR_ITEM_CANNOT_EXCEED, prettyPrint(item.getType().name()), maxAllowed));
     		}
     	}
     }
-    /**
-     * Checks if a player is the owner of a shop.
-     * @param p Player object
-     * @param signname Name written on the sign
-     * @return True if owner, false otherwise
-     */
-    private boolean playerIsOwner(Player p, String signname) {
-    	//return (ChatColor.DARK_BLUE + p.getName()).equals(ChatColor.DARK_BLUE + signname);
-    	return true;
-    }
-    
+
     private boolean itemIsFinishedBook(ItemStack item) {
     	return item != null && item.getType().equals(XMaterial.WRITTEN_BOOK.parseMaterial());
     }

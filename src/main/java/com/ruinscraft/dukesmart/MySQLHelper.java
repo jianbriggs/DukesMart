@@ -165,7 +165,6 @@ public class MySQLHelper {
 								ItemStack item = itemFrom64(result.getString(3));
 								shop = new Shop(s_id, s_uuid, world, x, y, z, item, s_quantity, s_price);
 							} catch (IOException e) {
-								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
                     	}
@@ -285,7 +284,6 @@ public class MySQLHelper {
 	    	catch (SQLException ex) {
 	    		player.sendMessage(ex.getMessage());
 	        } catch (NoSuchAlgorithmException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 	    	
@@ -495,7 +493,6 @@ public class MySQLHelper {
                     	ArrayList<String> topTen = new ArrayList<String>();
                     	while(result.next()) {
                     		String playerName = Bukkit.getOfflinePlayer(UUID.fromString(result.getString(1))).getName();
-                    		//topTen.add(String.format(this.STR_TOP_TEN_LISTING, playerName, result.getInt(2)));
                     		topTen.add(String.format(this.STR_TOP_TEN_LISTING, result.getInt(2), playerName));
                     	}
                     	return topTen;
@@ -526,7 +523,6 @@ public class MySQLHelper {
                     	ArrayList<String> recent= new ArrayList<String>();
                     	while(result.next()) {
                     		String playerName = Bukkit.getOfflinePlayer(UUID.fromString(result.getString(1))).getName();
-                    		//topTen.add(String.format(this.STR_TOP_TEN_LISTING, playerName, result.getInt(2)));
                     		recent.add(String.format(this.STR_VIEW_TRANSACTION, result.getString(2), playerName));
                     	}
                     	return recent;
