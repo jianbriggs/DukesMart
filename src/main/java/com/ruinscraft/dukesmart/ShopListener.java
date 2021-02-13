@@ -63,7 +63,8 @@ public class ShopListener implements Listener{
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
 	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.AQUA + "Don't forget to lock your chest to protect your shop's inventory!";
 	private final String MSG_ERROR_SHULKER_CONTAINS_ITEM = "We're sorry, but you cannot sell shulkers containing items.\nTry again with an empty shulker box.";
-
+	private final String MSG_WARNING_ITEM_CANNOT_EXCEED = ChatColor.AQUA + "The item %s cannot exceed a stacksize of %d. Your sign has been corrected.";
+	
     public ShopListener(DukesMart plugin) {
     	this.plugin = plugin;
     }
@@ -185,6 +186,9 @@ public class ShopListener implements Listener{
             					}
                 				
                 				sign.setLine(1, getItemDisplayName(itemToSell));
+                				// update quantities if they exceed the stack size for the item
+                				updateSignQuantity(player, sign, itemToSell);
+                				
 	                			sign.update();
 	                			
             					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
@@ -811,6 +815,26 @@ public class ShopListener implements Listener{
     	return sign.getLine(0).equals(SHOP_SIGN_IDENTIFIER) && validateShopPrice(sign.getLine(2));
     }
     
+    /**
+     * Checks if the player-entered quantity for an item exceeds that
+     * allowed by the ItemStack.
+     * 
+     */
+    private void updateSignQuantity(Player player, Sign sign, ItemStack item) {
+    	String[] lines = sign.getLines();
+    	String[] tokens = lines[2].split(" ");
+    	int quantity = Integer.parseInt(tokens[0]);
+    	int maxAllowed = item.getMaxStackSize();
+    	
+    	if(quantity > maxAllowed) {
+    		sign.setLine(2, maxAllowed + " " + tokens[1] + " " + tokens[2]);
+    		sign.update();
+    		
+    		if(player.isOnline()) {
+    			player.sendMessage(String.format(MSG_WARNING_ITEM_CANNOT_EXCEED, item.getType().name(), maxAllowed));
+    		}
+    	}
+    }
     /**
      * Checks if a player is the owner of a shop.
      * @param p Player object
