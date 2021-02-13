@@ -24,6 +24,9 @@ Chest shop plugin without Vault implementation; item-based
 ## How to use DukesMart
 **DukesMart** is made with players of all ages in mind. As such, it is straight-forward compared to other chest shop plugins.
 
+### Your ledger
+Every player will be given a **ledger**. The ledger stores income from all shops you own. Your ledger is safe from theft, but it is not your personal bank. You can only withdraw from it.
+
 ### Creating a shop
 You will need the following items: **chest**, **sign**, and of course an **item** to sell.
 
