@@ -10,7 +10,8 @@ public class NotifyPlayerIncomeTaskController {
 	private DukesMart plugin;
 	private HashMap<Player, BukkitTask> tasks = new HashMap<Player, BukkitTask>();
 	
-	private int DELAY_SECONDS = 1800; // 30 minutes
+	//private int DELAY_SECONDS = 1800; // 30 minutes
+	private int DELAY_SECONDS = 2;
 	
 	public NotifyPlayerIncomeTaskController(DukesMart plugin) {
 		this.plugin = plugin;
@@ -25,8 +26,14 @@ public class NotifyPlayerIncomeTaskController {
 					return;
 				}
 			}
-	
-			BukkitTask task = new NotifyPlayerIncomeTask(player).runTaskLater(this.plugin, 20*this.DELAY_SECONDS);
+			/*
+			Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
+				short timer = 3;
+				
+				public void run
+			}, 0, 20*DELAY_SECONDS);
+			*/
+			BukkitTask task = new NotifyPlayerIncomeTask(player).runTaskTimer(this.plugin, 0, 20*this.DELAY_SECONDS);
 			tasks.put(player, task);
 		}
 	}
