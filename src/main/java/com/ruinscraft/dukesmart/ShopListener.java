@@ -46,7 +46,6 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
-
 import net.md_5.bungee.api.ChatColor;
 
 public class ShopListener implements Listener{
@@ -63,7 +62,8 @@ public class ShopListener implements Listener{
 	private final String MSG_PLAYER_LEDGER_CREATED = ChatColor.YELLOW + "Welcome! Your " + ChatColor.GOLD + "DukesMart" + ChatColor.YELLOW + " ledger has been created! Use " + ChatColor.GOLD + "/shop" + ChatColor.YELLOW + " to view available commands.";
 	private final String MSG_PLAYER_INCOME_LAST_LOGIN = ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + "$%d" + ChatColor.YELLOW + " from your chest shops." + ChatColor.GOLD + " /shop withdraw";
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
-	private final String MSG_SHOP_SECURITY_WARNING = ChatColor.BOLD + "" + ChatColor.AQUA + "Don't forget to lock your shop chest!";
+	private final String MSG_SHOP_SECURITY_WARNING = "" + ChatColor.RED + "" + ChatColor.BOLD + "Don't forget to lock your shop chest!";
+
 	private final String MSG_ERROR_SHULKER_CONTAINS_ITEM = "We're sorry, but you cannot sell shulkers containing items.\nTry again with an empty shulker box.";
 	private final String MSG_ERROR_ITEM_CANNOT_EXCEED = "The item %s cannot exceed a stack size of %d. Your sign has been corrected.";
 	private final String MSG_ERROR_NOT_ENOUGH_GOLD = "Sorry, you do not have enough gold to buy.";
@@ -194,7 +194,7 @@ public class ShopListener implements Listener{
             					this.plugin.getMySQLHelper().registerShop(player, sign, itemToSell).thenAccept(callback -> {
             						if(player.isOnline()) {
 		                				player.sendMessage(this.MSG_SHOP_CREATION_SUCCESS);
-		                				player.sendMessage(this.MSG_SHOP_SECURITY_WARNING);
+		                				new ActionBarNotifyTask(player, this.MSG_SHOP_SECURITY_WARNING, 3).runTaskTimer(this.plugin, 0, 20*2);                				
             						}
 	                			});	
                 			}

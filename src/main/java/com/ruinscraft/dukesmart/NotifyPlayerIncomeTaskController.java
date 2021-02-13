@@ -6,11 +6,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
+import net.md_5.bungee.api.ChatColor;
+
 public class NotifyPlayerIncomeTaskController {
 	private DukesMart plugin;
 	private HashMap<Player, BukkitTask> tasks = new HashMap<Player, BukkitTask>();
+	private final String message = "" + ChatColor.GREEN + ChatColor.BOLD + "You've got cash! " + ChatColor.GOLD + "/shop balance";
 	
-	//private int DELAY_SECONDS = 1800; // 30 minutes
 	private int DELAY_SECONDS = 2;
 	
 	public NotifyPlayerIncomeTaskController(DukesMart plugin) {
@@ -26,14 +28,8 @@ public class NotifyPlayerIncomeTaskController {
 					return;
 				}
 			}
-			/*
-			Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, new Runnable() {
-				short timer = 3;
-				
-				public void run
-			}, 0, 20*DELAY_SECONDS);
-			*/
-			BukkitTask task = new NotifyPlayerIncomeTask(player).runTaskTimer(this.plugin, 0, 20*this.DELAY_SECONDS);
+			
+			BukkitTask task = new ActionBarNotifyTask(player, message, 3).runTaskTimer(this.plugin, 0, 20*this.DELAY_SECONDS);
 			tasks.put(player, task);
 		}
 	}
