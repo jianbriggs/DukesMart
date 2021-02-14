@@ -74,3 +74,4 @@ Check this document for additional commands in future releases.
 
 ## Limitations
 1. Shulker boxes containing items may not be sold. Empty shulker boxes, however, are allowed to be sold.
+2. For technical reasons, dyed leather armor will not display the color name
