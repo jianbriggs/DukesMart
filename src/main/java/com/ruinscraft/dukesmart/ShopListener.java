@@ -246,7 +246,7 @@ public class ShopListener implements Listener{
 				                			pi.removeItem(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL, selectedShop.getPrice()));
 
 				                			pi.addItem(itemToBuy);
-				                			
+				                			////
 				                			this.plugin.getMySQLHelper().processTransaction(player, selectedShop).thenAccept(result -> {
 					                			if(player.isOnline()) {
 					                				Material itemType = selectedShop.getItem().getType();
