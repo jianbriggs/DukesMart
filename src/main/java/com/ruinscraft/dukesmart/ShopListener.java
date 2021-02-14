@@ -242,11 +242,9 @@ public class ShopListener implements Listener{
 			                			if(pi.containsAtLeast(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL), selectedShop.getPrice())){
 
 			                				storeStock.removeItem(itemToBuy);
-				                			
-			                				//storeStock.removeItem(itemToBuy);
-			                				
+
 				                			pi.removeItem(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL, selectedShop.getPrice()));
-				                			// and put into the player's inventory
+
 				                			pi.addItem(itemToBuy);
 				                			
 				                			this.plugin.getMySQLHelper().processTransaction(player, selectedShop).thenAccept(result -> {
@@ -256,7 +254,7 @@ public class ShopListener implements Listener{
 					                						+ materialPrettyPrint(itemType) + " for " + ChatColor.GOLD + "$" + selectedShop.getPrice());
 					                				
 					                				Player owner = Bukkit.getPlayer(UUID.fromString(selectedShop.getOwner()));
-					                				if(owner != null && owner.isOnline()) {
+					                				if(owner != null && owner.isOnline() && selectedShop.getPrice() > 0) {
 					                					this.plugin.getNotifyPlayerController().addTask(owner);
 					                				}
 					                			}		
