@@ -744,7 +744,7 @@ public class ShopListener implements Listener{
     	String[] tokens = line.split(" ");
     	if(tokens.length == 3) {
 	    	// check the first token contains only integers
-	    	if(!tokens[0].isBlank()) {
+	    	if(!tokens[0].isEmpty()) {
 	    		
 	    		for(char c : tokens[0].toCharArray()) {
 	    			if(!Character.isDigit(c)) {
@@ -759,13 +759,13 @@ public class ShopListener implements Listener{
 	    		}
 	    	}
 	    	// then, check if the word "for" is present
-	    	if(!tokens[1].isBlank() && !tokens[1].equalsIgnoreCase("for")) {
+	    	if(!tokens[1].isEmpty() && !tokens[1].equalsIgnoreCase("for")) {
 	    		return false;
 	    	}
 	    	
 	    	// finally, check the format of the price tag
 	    	// first char should be '$', rest should be digit
-	    	if(!tokens[2].isBlank()) {
+	    	if(!tokens[2].isEmpty()) {
 	    		String price = tokens[2];
 	    		if(price.length() > 1) {
 		    		if(price.charAt(0) != '$') {
