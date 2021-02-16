@@ -8,7 +8,6 @@ import java.util.UUID;
 import java.util.Map.Entry;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Banner;
@@ -31,7 +30,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemFactory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BannerMeta;
@@ -40,7 +38,6 @@ import org.bukkit.inventory.meta.BookMeta;
 import org.bukkit.inventory.meta.BookMeta.Generation;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.map.MapView;
@@ -155,8 +152,17 @@ public class ShopListener implements Listener{
             	// a shop is defined as a sign (formatted)
             	// and a chest block immediately below it.
                 Sign sign = (Sign) clickedBlock.getState();
-                Block block = clickedBlock.getRelative(BlockFace.DOWN, 1);
-
+                org.bukkit.material.Sign signMaterial = (org.bukkit.material.Sign) sign.getData();
+                Block block = null;
+                
+                // first, get the block that the sign is attached to
+                block = clickedBlock.getRelative(signMaterial.getAttachedFace());
+                
+                // if the attached block is NOT chest, try the block below it
+                if(!blockIsChest(block)) {
+                	block = clickedBlock.getRelative(BlockFace.DOWN, 1);
+                }
+                
                 if(blockIsChest(block)) {
                 	Chest chest = (Chest) block.getState();
                 	
@@ -515,7 +521,7 @@ public class ShopListener implements Listener{
 	 * @return True if block is sign, False otherwise
 	 */
     private boolean blockIsSign(Block block) {
-    	return block.getType().equals(Material.WALL_SIGN) || block.getType().equals(Material.SIGN);
+    	return block != null && (block.getType().equals(Material.WALL_SIGN) || block.getType().equals(Material.SIGN));
     }
     
     /**
@@ -525,7 +531,7 @@ public class ShopListener implements Listener{
      * @return True if block is chest, False otherwise
      */
     private boolean blockIsChest(Block block) {
-    	return block.getState() instanceof Chest || block.getState() instanceof DoubleChest;
+    	return block != null && (block.getState() instanceof Chest || block.getState() instanceof DoubleChest);
     }
     
     private String materialPrettyPrint(Material material) {
