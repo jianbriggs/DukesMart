@@ -9,21 +9,16 @@
 	<name>DukesMart</name>
 
 	<properties>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>8</maven.compiler.source>
+		<maven.compiler.target>8</maven.compiler.target>
 		<mainClass>com.ruinscraft.dukesmart.DukesMart</mainClass>
-		<jar.finalName>${project.name}-${project.version}</jar.finalName>
+		<jar.finalName>${project.name}</jar.finalName>
 	</properties>
 
 	<repositories>
 		<repository>
 			<id>spigot-repo</id>
 			<url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-		</repository>
-		<repository>
-			<id>maven-central</id>
-			<name>MavenRepo</name>
-			<url>https://repo.maven.apache.org/maven2/</url>
 		</repository>
 	</repositories>
 
