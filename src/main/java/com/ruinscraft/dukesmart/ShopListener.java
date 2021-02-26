@@ -69,7 +69,7 @@ public class ShopListener implements Listener{
 	private final String MSG_ERROR_NOT_ENOUGH_GOLD = "Sorry, you do not have enough gold to buy.";
 	private final String MSG_ERROR_NOT_ENOUGH_SPACE = "You do not have enough free space for this purchase.";
 	private final String MSG_ERROR_SHOP_OUT_OF_STOCK = "Sorry, this shop is out of stock. Come back later.";
-	
+	private final String MSG_ERROR_LEDGER_CLEARED = ChatColor.GRAY + "It seems your ledger was cleared in your extended absence...";
 	private final String MSG_WARNING_INCOME_EXPIRES_SOON = ChatColor.RED + "Heads up! Your ledger income will expire in %d days. Don't forget to make a withdraw!";
     public ShopListener(DukesMart plugin) {
     	this.plugin = plugin;
@@ -99,14 +99,20 @@ public class ShopListener implements Listener{
         		});
         	}
         	else if(player.isOnline() && result.getIncome() > 0) {	
-    			player.sendMessage(String.format(MSG_PLAYER_INCOME_LAST_LOGIN, result.getIncome()));
-    			
     			if(result.getDate() != null) {
-		            if(result.daysLeftBeforeExpire() > 0 && result.daysLeftBeforeExpire() <= 10) {
-			            player.sendMessage(String.format(MSG_WARNING_INCOME_EXPIRES_SOON, result.daysLeftBeforeExpire()));
-		            }
-		            else if(result.dateIsExpired()){
-		            	// TODO: add SQL to clear ledger income
+    				if(!result.dateIsExpired()) {
+    					player.sendMessage(String.format(MSG_PLAYER_INCOME_LAST_LOGIN, result.getIncome()));
+            			
+			            if(result.daysLeftBeforeExpire() > 0 && result.daysLeftBeforeExpire() <= 10) {
+				            player.sendMessage(String.format(MSG_WARNING_INCOME_EXPIRES_SOON, result.daysLeftBeforeExpire()));
+			            }
+    				}
+		            else{
+		            	this.plugin.getMySQLHelper().clearPlayerLedger(player).thenAccept(cleared -> {
+		            		if(cleared) {
+		            			player.sendMessage(MSG_ERROR_LEDGER_CLEARED);
+		            		}
+		                });
 		            }
 	            } 
         	}

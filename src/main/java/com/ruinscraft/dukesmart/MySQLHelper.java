@@ -58,6 +58,7 @@ public class MySQLHelper {
 											  	  + " player_uuid char(40) NOT NULL,"
 											  	  + " income int(11) NOT NULL DEFAULT '0',"
 											  	  + " total_earned int(11) NOT NULL DEFAULT '0',"
+											  	  + " withdraw_timer date NULL DEFAULT NULL,"
 											  	  + " PRIMARY KEY(player_uuid),"
 											  	  + " UNIQUE KEY player_uuid (player_uuid))";
 	
@@ -88,6 +89,8 @@ public class MySQLHelper {
 	private final String SQL_GET_PLAYER_INCOME = "SELECT income, withdraw_timer FROM dukesmart_ledgers WHERE player_uuid = ?";
 	
 	private final String SQL_UPDATE_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = ?, withdraw_timer = NULL WHERE player_uuid = ?";
+	
+	private final String SQL_CLEAR_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = 0, withdraw_timer = NULL WHERE player_uuid = ?";
 	
 	private final String SQL_LOG_TRANSACTION = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
 	
@@ -331,6 +334,24 @@ public class MySQLHelper {
             }
             
             return transactionComplete;
+        });
+    }
+    
+    public CompletableFuture<Boolean> clearPlayerLedger(Player player){
+        return CompletableFuture.supplyAsync(() -> {
+            try (Connection connection = getConnection()) {
+                try (PreparedStatement query = connection.prepareStatement(this.SQL_CLEAR_LEDGER_INCOME)){
+                	query.setString(1, player.getUniqueId().toString());
+                	
+                	if( query.executeUpdate() > 0 ){
+                		return true;
+                	}
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            
+            return false;
         });
     }
     
