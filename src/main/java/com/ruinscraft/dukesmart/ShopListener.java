@@ -1,6 +1,5 @@
 package com.ruinscraft.dukesmart;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -99,18 +98,17 @@ public class ShopListener implements Listener{
         			}
         		});
         	}
-        	else if(player.isOnline()) {
-        		
-	            player.sendMessage(String.format(MSG_PLAYER_INCOME_LAST_LOGIN, result.getIncome()));
-	            
-	            if(result.getDate() != null) {
+        	else if(player.isOnline() && result.getIncome() > 0) {	
+    			player.sendMessage(String.format(MSG_PLAYER_INCOME_LAST_LOGIN, result.getIncome()));
+    			
+    			if(result.getDate() != null) {
 		            if(result.daysLeftBeforeExpire() > 0 && result.daysLeftBeforeExpire() <= 10) {
 			            player.sendMessage(String.format(MSG_WARNING_INCOME_EXPIRES_SOON, result.daysLeftBeforeExpire()));
 		            }
 		            else if(result.dateIsExpired()){
 		            	// TODO: add SQL to clear ledger income
 		            }
-	            }
+	            } 
         	}
         });
     }

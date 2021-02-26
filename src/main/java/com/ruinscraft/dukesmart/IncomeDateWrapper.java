@@ -1,7 +1,5 @@
 package com.ruinscraft.dukesmart;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 public class IncomeDateWrapper {

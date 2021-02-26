@@ -12,11 +12,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -317,14 +314,17 @@ public class MySQLHelper {
                     }
                 }
                 
-                try (PreparedStatement query = connection.prepareStatement(this.SQL_ADD_GOLD_TO_SHOP_LEDGER)){
-                	query.setInt(1, shop.getPrice());
-                	query.setInt(2, shop.getPrice());
-                	query.setString(3, shop.getOwner());
-                	
-                	if( query.executeUpdate() > 0 ){
-                		transactionComplete = true;
-                	}
+                // no need to change the ledger income if the price is free
+                if(shop.getPrice() > 0) {
+	                try (PreparedStatement query = connection.prepareStatement(this.SQL_ADD_GOLD_TO_SHOP_LEDGER)){
+	                	query.setInt(1, shop.getPrice());
+	                	query.setInt(2, shop.getPrice());
+	                	query.setString(3, shop.getOwner());
+	                	
+	                	if( query.executeUpdate() > 0 ){
+	                		transactionComplete = true;
+	                	}
+	                }
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
