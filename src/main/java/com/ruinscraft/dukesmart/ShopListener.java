@@ -1,5 +1,6 @@
 package com.ruinscraft.dukesmart;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -70,6 +71,7 @@ public class ShopListener implements Listener{
 	private final String MSG_ERROR_NOT_ENOUGH_SPACE = "You do not have enough free space for this purchase.";
 	private final String MSG_ERROR_SHOP_OUT_OF_STOCK = "Sorry, this shop is out of stock. Come back later.";
 	
+	private final String MSG_WARNING_INCOME_EXPIRES_SOON = ChatColor.RED + "Heads up! Your ledger income will expire in %d days. Don't forget to make a withdraw!";
     public ShopListener(DukesMart plugin) {
     	this.plugin = plugin;
     }
@@ -83,13 +85,13 @@ public class ShopListener implements Listener{
     public void onPlayerJoin(PlayerJoinEvent evt) {
         Player player = evt.getPlayer(); // The player who joined
         
-        this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(income -> {
+        this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(result -> {
         	/* if the returning value is '-1', then the player does
         	 * not have a ledger and must be created
         	 */
-        	if(income == -1) {
-        		this.plugin.getMySQLHelper().setupLedger(player).thenAccept(result -> {
-        			if(result) {
+        	if(result == null) {
+        		this.plugin.getMySQLHelper().setupLedger(player).thenAccept(createLedger -> {
+        			if(createLedger) {
         				Bukkit.getLogger().info("New ledger created for " + player.getName() + " (UUID: " + player.getUniqueId() + ")");;
         				if(player.isOnline()) {
         					player.sendMessage(MSG_PLAYER_LEDGER_CREATED);
@@ -97,11 +99,20 @@ public class ShopListener implements Listener{
         			}
         		});
         	}
-        	else if(player.isOnline() && income > 0) {
-	            player.sendMessage(String.format(MSG_PLAYER_INCOME_LAST_LOGIN, income));
+        	else if(player.isOnline()) {
+        		
+	            player.sendMessage(String.format(MSG_PLAYER_INCOME_LAST_LOGIN, result.getIncome()));
+	            
+	            if(result.getDate() != null) {
+		            if(result.daysLeftBeforeExpire() > 0 && result.daysLeftBeforeExpire() <= 10) {
+			            player.sendMessage(String.format(MSG_WARNING_INCOME_EXPIRES_SOON, result.daysLeftBeforeExpire()));
+		            }
+		            else if(result.dateIsExpired()){
+		            	// TODO: add SQL to clear ledger income
+		            }
+	            }
         	}
         });
-
     }
     
     @EventHandler

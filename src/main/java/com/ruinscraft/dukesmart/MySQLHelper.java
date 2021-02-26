@@ -12,8 +12,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -83,11 +86,11 @@ public class MySQLHelper {
 	private final String SQL_CREATE_LEDGER = "INSERT INTO dukesmart_ledgers (player_uuid, income, total_earned) VALUES(?, 0, 0)"
 			  							   + " ON DUPLICATE KEY UPDATE income = income, total_earned = total_earned";
 	
-	private final String SQL_ADD_GOLD_TO_SHOP_LEDGER = "UPDATE dukesmart_ledgers SET income = income + ?, total_earned = total_earned + ? WHERE player_uuid = ?";
+	private final String SQL_ADD_GOLD_TO_SHOP_LEDGER = "UPDATE dukesmart_ledgers SET income = income + ?, total_earned = total_earned + ?, withdraw_timer = NOW() WHERE player_uuid = ?";
 	
-	private final String SQL_GET_PLAYER_INCOME = "SELECT income FROM dukesmart_ledgers WHERE player_uuid = ?";
+	private final String SQL_GET_PLAYER_INCOME = "SELECT income, withdraw_timer FROM dukesmart_ledgers WHERE player_uuid = ?";
 	
-	private final String SQL_UPDATE_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = ? WHERE player_uuid = ?";
+	private final String SQL_UPDATE_LEDGER_INCOME = "UPDATE dukesmart_ledgers SET income = ?, withdraw_timer = NULL WHERE player_uuid = ?";
 	
 	private final String SQL_LOG_TRANSACTION = "INSERT INTO dukesmart_transactions (buyer_uuid, shop_id, purchase_date) VALUES(?, ?, NOW())";
 	
@@ -354,11 +357,11 @@ public class MySQLHelper {
     }
     
     /**
-     * Gets the amount of money in a player's shop ledger
+     * Gets the amount of money in a player's shop ledger as well as last withdraw date
      * @param player - Player whose ledger will be checked
      * @return Amount of income on success, -1 if ledger does not exist, 0 otherwise
      */
-    public CompletableFuture<Integer> getPlayerIncome(Player player){
+    public CompletableFuture<IncomeDateWrapper> getPlayerIncome(Player player){
         return CompletableFuture.supplyAsync(() -> {
         	        	
             try (Connection connection = getConnection()) {
@@ -370,11 +373,11 @@ public class MySQLHelper {
                     try (ResultSet result = query.executeQuery()) {
                     	result.last();
                     	if(result.getRow() > 0) {
-                    		return result.getInt(1);
+                    		return new IncomeDateWrapper(result.getInt(1), result.getDate(2));
                     	}
                     	else {
                     		// player must not have a ledger
-                    		return -1;
+                    		return null;
                     	}
                     }
                 }
@@ -383,7 +386,7 @@ public class MySQLHelper {
                 e.printStackTrace();
             }
             
-            return 0;
+            return null;
         });
     }
     

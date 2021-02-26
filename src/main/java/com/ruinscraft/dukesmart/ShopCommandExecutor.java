@@ -207,8 +207,8 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	 * @param player
 	 */
 	private void withdrawAllMoney(Player player) {
-		this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(income -> {
-        	withdrawMoney(player, income);
+		this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(result -> {
+        	withdrawMoney(player, result.getIncome());
         });
 	}
 	
@@ -259,9 +259,9 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	}
 	
 	private void checkBalance(Player player) {
-		this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(balance -> {
+		this.plugin.getMySQLHelper().getPlayerIncome(player).thenAccept(result -> {
         	if(player.isOnline()) {
-        		player.sendMessage(String.format(this.MSG_LEDGER_PRINT_BALANCE, balance));
+        		player.sendMessage(String.format(this.MSG_LEDGER_PRINT_BALANCE, result.getIncome()));
         		this.plugin.getNotifyPlayerController().removeTask(player);
         	}
         });
