@@ -91,10 +91,7 @@ public class ShopListener implements Listener{
         	if(result == null) {
         		this.plugin.getMySQLHelper().setupLedger(player).thenAccept(createLedger -> {
         			if(createLedger) {
-        				Bukkit.getLogger().info("New ledger created for " + player.getName() + " (UUID: " + player.getUniqueId() + ")");;
-        				if(player.isOnline()) {
-        					player.sendMessage(MSG_PLAYER_LEDGER_CREATED);
-        				}
+        				Bukkit.getLogger().info("New ledger created for " + player.getName() + " (UUID: " + player.getUniqueId() + ")");
         			}
         		});
         	}
