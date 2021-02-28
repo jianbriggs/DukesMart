@@ -25,20 +25,20 @@ Chest shop plugin without Vault implementation; item-based
 **DukesMart** is made with players of all ages in mind. As such, it is straight-forward compared to other chest shop plugins.
 
 ### Your ledger
-Every player will be given a **ledger**. The ledger stores income from all shops you own. Your ledger is safe from theft, but it is not your personal bank. You can only withdraw from it.
+Every player will be given a **ledger**. The ledger stores income from all shops you own. Your ledger is safe from theft, but it is not your personal bank. Any income in your ledger will expire if left unattended for **forty-five days**. Make sure you withdraw *all* of your ledger income before then!
 
 ### Creating a shop
 You will need the following items: **chest**, **sign**, and of course an **item** to sell.
 
 1. Place a chest on the ground. Double chests work as well.
-2. Place the sign above the chest.
+2. Place the sign either on or above the chest.
 3. On the **first** line of the sign, type in "[buy]" (case-insensitive).
-4. On the **third** line of the sign, type in the format "_x_ for $_y_", where _x_ is the quantity and _y_ is the price.
+4. On the **third** line of the sign, type in the format "*x* for $*y*", where *x* is the quantity and *y* is the price.
     1. For example, "5 for $8" means five of the item for $8
 5. If the sign is formatted correctly, the first line will turn purple, a white **?** appears on the second line, and your username will appear on the fourth line in dark blue
 6. Next, place the item you want to sell in your hand.
-7. Right-click on the shop sign.
-8. The white **?** on the second line will now read the name of your item.
+7. With item in hand, right-click on your newly created sign.
+8. The white **?** on the second line will now read the name of your item. If your item has a custom name, such as a written book, it will display that instead.
 9. Place all items to sell in the chest below.
 10. Done!
 
@@ -75,3 +75,5 @@ Check this document for additional commands in future releases.
 ## Limitations
 1. Shulker boxes containing items may not be sold. Empty shulker boxes, however, are allowed to be sold.
 2. For technical reasons, dyed leather armor will not display the color name
+3. While you may set your prices at any value, the maximum possible price is $2304 (max stacks in every inventory slot)
+4. Currently, you may not set the quantity of an item greater than that item's maximum stack (Eg. a dirt block's maximum stack is 64.) DukesMart will correct any invalid quantity automatically.
