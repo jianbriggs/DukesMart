@@ -58,7 +58,7 @@ public class MySQLHelper {
 											  	  + " player_uuid char(40) NOT NULL,"
 											  	  + " income int(11) NOT NULL DEFAULT '0',"
 											  	  + " total_earned int(11) NOT NULL DEFAULT '0',"
-											  	  + " withdraw_timer date NULL DEFAULT NULL,"
+											  	  + " withdraw_timer date DEFAULT NULL,"
 											  	  + " PRIMARY KEY(player_uuid),"
 											  	  + " UNIQUE KEY player_uuid (player_uuid))";
 	
