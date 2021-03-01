@@ -44,9 +44,9 @@ public class MySQLHelper {
 												+ " shop_id varchar(32) NOT NULL,"
 												+ " player_uuid char(40) NOT NULL,"
 												+ " world varchar(10) NOT NULL DEFAULT 'NORMAL',"
-												+ " location_x smallint(6) NOT NULL,"
-											    + " location_y smallint(6) NOT NULL,"
-												+ " location_z smallint(6) NOT NULL,"
+												+ " location_x int(11) NOT NULL,"
+											    + " location_y int(11) NOT NULL,"
+												+ " location_z int(11) NOT NULL,"
 												+ " material varchar(32) NOT NULL,"
 												+ " item_serialization blob NOT NULL,"
 												+ " quantity int(11) NOT NULL DEFAULT '0',"
@@ -145,18 +145,18 @@ public class MySQLHelper {
         return CompletableFuture.supplyAsync(() -> {
         	// separate world/coordinate data
         	String world = location.getWorld().getName();
-        	short x = (short) location.getX();
-        	byte  y = (byte)  location.getY();
-        	short z = (short) location.getZ();
+        	int x = (int) location.getX();
+        	int y = (int) location.getY();
+        	int z = (int) location.getZ();
         	Shop shop = null;
         	
             try (Connection connection = getConnection()) {
 
                 try (PreparedStatement query = connection.prepareStatement(this.SQL_SELECT_SHOP_FROM_LOCATION)) {
                     query.setString(1, world);
-                    query.setShort(2, x);
-                    query.setShort(3, y);
-                    query.setShort(4, z);
+                    query.setInt(2, x);
+                    query.setInt(3, y);
+                    query.setInt(4, z);
                     
                     try (ResultSet result = query.executeQuery()) {
                     	if(result.next()) {
@@ -185,17 +185,17 @@ public class MySQLHelper {
         return CompletableFuture.supplyAsync(() -> {
         	// separate world/coordinate data
         	String world = shop.getWorld();
-        	short x = (short) shop.getXLocation();
-        	short y = (short) shop.getYLocation();
-        	short z = (short) shop.getZLocation();
+        	int x = (int) shop.getXLocation();
+        	int y = (int) shop.getYLocation();
+        	int z = (int) shop.getZLocation();
         	
             try (Connection connection = getConnection()) {
             	
                 try (PreparedStatement query = connection.prepareStatement(this.SQL_DELETE_SHOP)) {
                     query.setString(1, world);
-                    query.setShort(2, x);
-                    query.setShort(3, y);
-                    query.setShort(4, z);
+                    query.setInt(2, x);
+                    query.setInt(3, y);
+                    query.setInt(4, z);
                     
                     if(query.executeUpdate() > 0 ) {
                     	return true;
@@ -223,9 +223,9 @@ public class MySQLHelper {
 	    		Location shopLocation = shopSign.getLocation();
 	    		String player_uuid = player.getUniqueId().toString();
 	    		String world = shopLocation.getWorld().getName();
-	    		short loc_x = (short) shopLocation.getX();
-	    		short loc_y = (short) shopLocation.getY();
-	    		short loc_z = (short) shopLocation.getZ();
+	    		int loc_x = (int) shopLocation.getX();
+	    		int loc_y = (int) shopLocation.getY();
+	    		int loc_z = (int) shopLocation.getZ();
 	    		String material = item.getType().name();
 	    		
 	    		String[] tokens = shopSign.getLine(2).split(" ");
@@ -264,9 +264,9 @@ public class MySQLHelper {
 	            	query.setString(1, shop_id);
 		            query.setString(2, player_uuid);
 		            query.setString(3, world);
-		            query.setShort(4, loc_x);
-		            query.setShort(5, loc_y);
-		            query.setShort(6, loc_z);
+		            query.setInt(4, loc_x);
+		            query.setInt(5, loc_y);
+		            query.setInt(6, loc_z);
 		            query.setString(7, material);
 		            query.setInt(8, quantity);
 		            query.setInt(9, price);

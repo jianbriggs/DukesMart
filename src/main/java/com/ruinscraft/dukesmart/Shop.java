@@ -16,14 +16,14 @@ public class Shop {
 	private final String id;
 	private final String owner_uuid;
 	private final String world_name;
-	private final short loc_x;
-	private final byte loc_y;
-	private final short loc_z;
+	private final int loc_x;
+	private final int loc_y;
+	private final int loc_z;
 	private ItemStack item;	
 	private short quantity;
 	private int price;
 	
-	public Shop(String id, String owner_uuid, String world, short loc_x, byte loc_y, short loc_z, ItemStack item, short quantity, int price) {
+	public Shop(String id, String owner_uuid, String world, int loc_x, int loc_y, int loc_z, ItemStack item, short quantity, int price) {
 		this.id = id;
 		this.owner_uuid = owner_uuid;
 		this.world_name = world;
