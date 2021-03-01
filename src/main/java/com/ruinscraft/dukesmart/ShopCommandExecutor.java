@@ -72,10 +72,13 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 						}
 					}
 
+					boolean success = false;
+
 					if(args.length >= 2) {
 						int amount = safeStringToInt(args[1]);
 						if(amount > 0)
 						{
+							success = true;
 							withdrawMoney(player, amount);
 						}
 						else {
@@ -83,10 +86,14 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 						}
 					}
 					else {
+						success = true;
 						withdrawAllMoney(player);
 					}
 
-					recentWithdraws.put(player, System.currentTimeMillis());
+					if (success) {
+						recentWithdraws.put(player, System.currentTimeMillis());
+					}
+					
 					break;
 				case "balance":
 				case "bal":
