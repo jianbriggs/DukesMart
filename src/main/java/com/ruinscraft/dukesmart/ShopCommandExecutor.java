@@ -1,9 +1,6 @@
 package com.ruinscraft.dukesmart;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -14,7 +11,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
-import net.md_5.bungee.api.ChatColor;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	private final DukesMart plugin;
@@ -32,11 +33,14 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	
 	private final List<String> tabOptions;
 	private final List<String> adminTabOptions;
+
+	private Map<Player, Long> recentWithdraws;
 	
 	public ShopCommandExecutor(DukesMart plugin) {
 		this.plugin = plugin;
 		this.tabOptions = new ArrayList<String>();
 		this.adminTabOptions = new ArrayList<String>();
+		this.recentWithdraws = new HashMap<>();
 		
 		tabOptions.add("withdraw");
 		tabOptions.add("balance");
@@ -58,6 +62,16 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 			switch(args[0].toLowerCase()){
 				case "withdraw":
 				case "with":
+					if (recentWithdraws.containsKey(player)) {
+						long lastBetTime = recentWithdraws.get(player);
+						long currentTime = System.currentTimeMillis();
+
+						if (lastBetTime + TimeUnit.SECONDS.toMillis(60) > currentTime) {
+							player.sendMessage(ChatColor.RED + "Please wait some time before withdrawing again.");
+							return false;
+						}
+					}
+
 					if(args.length >= 2) {
 						int amount = safeStringToInt(args[1]);
 						if(amount > 0)
@@ -71,6 +85,8 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 					else {
 						withdrawAllMoney(player);
 					}
+
+					recentWithdraws.put(player, System.currentTimeMillis());
 					break;
 				case "balance":
 				case "bal":
