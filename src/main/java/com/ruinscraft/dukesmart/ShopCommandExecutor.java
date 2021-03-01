@@ -63,10 +63,10 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 				case "withdraw":
 				case "with":
 					if (recentWithdraws.containsKey(player)) {
-						long lastBetTime = recentWithdraws.get(player);
+						long lastWithdrawTime = recentWithdraws.get(player);
 						long currentTime = System.currentTimeMillis();
 
-						if (lastBetTime + TimeUnit.SECONDS.toMillis(60) > currentTime) {
+						if (lastWithdrawTime + TimeUnit.SECONDS.toMillis(60) > currentTime) {
 							player.sendMessage(ChatColor.RED + "Please wait some time before withdrawing again.");
 							return false;
 						}
