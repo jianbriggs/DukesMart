@@ -251,6 +251,12 @@ public class ShopListener implements Listener{
 		                				hasStock = true;
 		                			}
 		                		}
+		                		else if(itemIsEnchantedBook(itemToBuy)) {
+		                			itemToBuy = shopChestFindEnchantedBook(storeStock, itemToBuy, selectedShop);
+		                			if(itemToBuy != null) {
+		                				hasStock = true;
+		                			}
+		                		}
 		                		else {
 		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
 		                		}
@@ -401,7 +407,7 @@ public class ShopListener implements Listener{
 	}
 	
 	/**
-	 * Special finding method for checking book existence
+	 * Special finding method for checking written book existence
 	 * @param storeStock
 	 * @param itemToBuy
 	 * @param shop
@@ -485,6 +491,67 @@ public class ShopListener implements Listener{
 		
 		return null;
 	}
+	
+	/**
+	 * Special finding method for checking enchanted book existence
+	 * @param storeStock
+	 * @param itemToBuy
+	 * @param shop
+	 * @return ItemStack representing correct enchanted book in chest, null on failure
+	 */
+	private ItemStack shopChestFindEnchantedBook(Inventory storeStock, ItemStack itemToBuy, Shop shop) {
+		// special check for written books
+		// this part does not check for quantity, just
+		// that the item itself exists somewhere
+		if(itemIsEnchantedBook(itemToBuy)) {
+			ItemStack[] chestItems = storeStock.getContents();
+			boolean success = true;
+			for(int i = 0; i < chestItems.length; i++) {
+				ItemStack temp = chestItems[i];
+				// if the item in chest is 
+				if(itemIsEnchantedBook(temp)) {
+					if(temp.hasItemMeta() && temp.getItemMeta() instanceof EnchantmentStorageMeta) {
+		        		EnchantmentStorageMeta tempMeta = (EnchantmentStorageMeta) temp.getItemMeta();
+		        		EnchantmentStorageMeta buyMeta = (EnchantmentStorageMeta) itemToBuy.getItemMeta();
+		        		
+		        		if(tempMeta.hasStoredEnchants()) {
+		        			if(!tempMeta.equals(buyMeta)) {
+		        				success = false;
+		        				continue;
+		        			}
+
+							if(success) {
+								itemToBuy = chestItems[i].clone();
+								itemToBuy.setAmount(1);
+								break;
+							}
+		        		}
+					}
+				}
+				success = true;
+			}
+		}
+		
+		if(storeStock instanceof DoubleChestInventory) {
+			DoubleChestInventory dci = (DoubleChestInventory) storeStock;
+			if(dci.getLeftSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
+				storeStock = dci.getLeftSide();
+				return itemToBuy;
+			}
+			else if(dci.getRightSide().containsAtLeast(itemToBuy, shop.getQuantity())) {
+				storeStock = dci.getRightSide();
+				return itemToBuy;
+			}
+		}
+		else{
+			if(storeStock.containsAtLeast(itemToBuy, shop.getQuantity())) {
+				return itemToBuy;
+			}
+		}
+		
+		return null;
+	}
+	
 	@EventHandler
     public void onBlockBreak(BlockBreakEvent evt) {
     	Player player = evt.getPlayer();
