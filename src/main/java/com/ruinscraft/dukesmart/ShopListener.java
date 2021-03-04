@@ -59,7 +59,6 @@ public class ShopListener implements Listener{
 	private final String SHOP_SIGN_OWNER_COLOR  = "" + ChatColor.DARK_BLUE;
 	
 	private final String PLUGIN_NAME = ChatColor.GOLD + "DukesMart";
-	private final String MSG_PLAYER_LEDGER_CREATED = ChatColor.YELLOW + "Welcome! Your " + ChatColor.GOLD + "DukesMart" + ChatColor.YELLOW + " ledger has been created! Use " + ChatColor.GOLD + "/shop" + ChatColor.YELLOW + " to view available commands.";
 	private final String MSG_PLAYER_INCOME_LAST_LOGIN = ChatColor.YELLOW + "Since last login, you made " + ChatColor.GOLD + "$%d" + ChatColor.YELLOW + " from your chest shops." + ChatColor.GOLD + " /shop withdraw";
 	private final String MSG_SHOP_CREATION_SUCCESS = ChatColor.AQUA + "Shop created! Now place your items to sell in chest below sign.";
 	private final String MSG_SHOP_SECURITY_WARNING = "" + ChatColor.RED + "" + ChatColor.BOLD + "Don't forget to lock your shop chest!";
@@ -672,14 +671,14 @@ public class ShopListener implements Listener{
         shopInfoElements.add("" + ChatColor.RED + ChatColor.BOLD + "For sale");
         shopInfoElements.add(materialPrettyPrint(item.getType()));
         if(meta.hasDisplayName()) {
-        	shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\"");
+        	shopInfoElements.add(truncateText("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\""));
         }
         
         if(itemIsFinishedBook(item)) {
         	BookMeta bookmeta = (BookMeta) meta;
         	
         	if(bookmeta.hasTitle()) {
-        		shopInfoElements.add("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + bookmeta.getTitle() + "\"");
+        		shopInfoElements.add(truncateText("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + bookmeta.getTitle() + "\""));
         	}
         	
         	if(bookmeta.hasAuthor()) {
