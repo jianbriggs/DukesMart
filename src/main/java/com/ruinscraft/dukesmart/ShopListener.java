@@ -276,9 +276,9 @@ public class ShopListener implements Listener{
 				                			this.plugin.getMySQLHelper().processTransaction(player, selectedShop).thenAccept(result -> {
 					                			if(player.isOnline()) {
 					                				Material itemType = selectedShop.getItem().getType();
-					                				player.sendMessage(ChatColor.AQUA + "You purchased " + selectedShop.getQuantity() + "x "
-					                						+ materialPrettyPrint(itemType) + " for " + ChatColor.GOLD + "$" + selectedShop.getPrice());
-					                				
+					                				String purchaseConfirmation = ChatColor.AQUA + "Purchased " + selectedShop.getQuantity() + "x " + materialPrettyPrint(itemType) + " for " + ChatColor.GOLD + "$" + selectedShop.getPrice();
+					                				new ActionBarNotifyTask(player, purchaseConfirmation, 3).runTaskTimer(this.plugin, 0, 20*2);
+
 					                				Player owner = Bukkit.getPlayer(UUID.fromString(selectedShop.getOwner()));
 					                				if(owner != null && owner.isOnline() && selectedShop.getPrice() > 0) {
 					                					this.plugin.getNotifyPlayerController().addTask(owner);
