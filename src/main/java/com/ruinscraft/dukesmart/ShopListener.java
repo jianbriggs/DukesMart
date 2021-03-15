@@ -443,13 +443,6 @@ public class ShopListener implements Listener{
 							continue;
 						}
 						
-						// remove this block if you want chests to check for original OR copies
-						if(tempMeta.hasGeneration() && tempMeta.getGeneration() != Generation.COPY_OF_ORIGINAL) {
-							success = false;
-							continue;
-						}
-						////
-						
 						List<String> tempPages = tempMeta.getPages();
 						List<String> buyPages  = buyMeta.getPages();
 						
