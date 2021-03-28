@@ -553,7 +553,6 @@ public class ShopListener implements Listener{
     		Sign sign = (Sign) block.getState();
     		
     		if(signIsShop(sign) && !shopSignHasNoItem(sign)) {
-    			evt.setCancelled(true);
 				Location shopLocation = sign.getLocation();
 				
 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop -> {
@@ -563,25 +562,11 @@ public class ShopListener implements Listener{
 								if(result) {
 									this.plugin.getSelectedShopController().removeShop(shop);
 									player.sendMessage(ChatColor.AQUA + "Shop removed.");
-									Bukkit.getScheduler().runTask(this.plugin, () -> {
-                						block.breakNaturally();
-                					});
-								}
-								else {
-									sendError(player, "Unable to remove shop. Try again later.");
 								}
 							}
 						});
 					}
-					else {
-						Bukkit.getScheduler().runTask(this.plugin, () -> {
-    						block.breakNaturally();
-    					});
-					}
 				});
-    		}
-    		else {
-    			return;
     		}
     	}
     }
