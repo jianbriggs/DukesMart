@@ -572,7 +572,7 @@ public class ShopListener implements Listener{
     }
 	
 	/**
-	 * Checks wheter a block is a sign.
+	 * Checks whether a block is a sign.
 	 * @param block
 	 * @return True if block is sign, False otherwise
 	 */
