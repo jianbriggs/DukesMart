@@ -15,6 +15,7 @@ import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
@@ -190,7 +191,7 @@ public class ShopListener implements Listener{
                 	// TODO: debug
                 	player.sendMessage("(Debug) Block is storage unit");
                 	////
-                	Chest chest = (Chest) block.getState();
+                	Container container = (Container) block.getState();
                 	
                 	if(signIsShop(sign)) {
                 		updateSign(sign);
@@ -250,7 +251,7 @@ public class ShopListener implements Listener{
 		                		ItemStack itemToBuy = selectedShop.getItem();
 		                		itemToBuy.setAmount(selectedShop.getQuantity());
 		                		
-		                		Inventory storeStock = chest.getInventory();
+		                		Inventory storeStock = container.getInventory();
 
 		                		// check if the chest inventory contains the item
 		                		boolean hasStock = false;
