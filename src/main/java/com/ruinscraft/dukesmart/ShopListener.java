@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Banner;
+import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
@@ -18,6 +19,9 @@ import org.bukkit.block.DoubleChest;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.block.Sign;
 import org.bukkit.block.banner.Pattern;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.type.WallSign;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -35,7 +39,6 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BannerMeta;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.BookMeta;
-import org.bukkit.inventory.meta.BookMeta.Generation;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.MapMeta;
@@ -160,21 +163,33 @@ public class ShopListener implements Listener{
         	Block clickedBlock = evt.getClickedBlock();
         	
             if (blockIsSign(clickedBlock)){
+            	// TODO: Debug
+            	player.sendMessage("(Debug) You clicked a sign");
+            	////
+            	
             	// a shop is defined as a sign (formatted)
             	// and a chest block immediately below it.
                 Sign sign = (Sign) clickedBlock.getState();
-                org.bukkit.material.Sign signMaterial = (org.bukkit.material.Sign) sign.getData();
+
+                BlockData data = clickedBlock.getBlockData();
                 Block block = null;
-                
                 // first, get the block that the sign is attached to
-                block = clickedBlock.getRelative(signMaterial.getAttachedFace());
+
+                if (data instanceof Directional)
+                {
+                    Directional directional = (Directional)data;
+                    block = clickedBlock.getRelative(directional.getFacing().getOppositeFace());
+                }
                 
                 // if the attached block is NOT chest, try the block below it
-                if(!blockIsChest(block)) {
+                if(!blockIsStorage(block)) {
                 	block = clickedBlock.getRelative(BlockFace.DOWN, 1);
                 }
                 
-                if(blockIsChest(block)) {
+                if(blockIsStorage(block)) {
+                	// TODO: debug
+                	player.sendMessage("(Debug) Block is storage unit");
+                	////
                 	Chest chest = (Chest) block.getState();
                 	
                 	if(signIsShop(sign)) {
@@ -576,18 +591,27 @@ public class ShopListener implements Listener{
 	 * @param block
 	 * @return True if block is sign, False otherwise
 	 */
-    private boolean blockIsSign(Block block) {
-    	return block != null && (block.getType().equals(Material.WALL_SIGN) || block.getType().equals(Material.SIGN));
+	private boolean blockIsSign(Block block) {
+    	return block != null && (
+    		    block.getType().equals(Material.ACACIA_WALL_SIGN)
+    		 || block.getType().equals(Material.BIRCH_WALL_SIGN)
+    		 || block.getType().equals(Material.CRIMSON_WALL_SIGN)
+    		 || block.getType().equals(Material.DARK_OAK_WALL_SIGN)
+    		 || block.getType().equals(Material.JUNGLE_WALL_SIGN)
+    		 || block.getType().equals(Material.OAK_WALL_SIGN)
+    		 || block.getType().equals(Material.SPRUCE_WALL_SIGN)
+    		 || block.getType().equals(Material.WARPED_WALL_SIGN)
+    		 );
     }
     
     /**
-     * Checks whether a block is a chest or double chest
+     * Checks whether a block is a chest, double chest, or barrel
      * (note that Enderchests are not checked)
      * @param block - Block to check
      * @return True if block is chest, False otherwise
      */
-    private boolean blockIsChest(Block block) {
-    	return block != null && (block.getState() instanceof Chest || block.getState() instanceof DoubleChest);
+    private boolean blockIsStorage(Block block) {
+    	return block != null && (block.getState() instanceof Chest || block.getState() instanceof DoubleChest || block.getState() instanceof Barrel);
     }
     
     private String materialPrettyPrint(Material material) {

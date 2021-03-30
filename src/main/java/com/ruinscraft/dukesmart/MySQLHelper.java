@@ -130,7 +130,7 @@ public class MySQLHelper {
 	}
 	
 	private Connection getConnection() {
-        String jdbcUrl = "jdbc:mysql://" + this.host + ":" + this.port + "/" + this.database;
+        String jdbcUrl = "jdbc:mysql://" + this.host + ":" + this.port + "/" + this.database + "?useSSL=false";
 
         try {
             return DriverManager.getConnection(jdbcUrl, this.username, this.password);
