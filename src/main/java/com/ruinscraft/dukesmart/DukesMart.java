@@ -1,3 +1,4 @@
+// current: v1.16
 package com.ruinscraft.dukesmart;
 
 import org.bukkit.plugin.java.JavaPlugin;
