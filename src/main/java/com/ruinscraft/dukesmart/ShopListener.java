@@ -22,7 +22,6 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
-import org.bukkit.block.data.type.WallSign;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -164,10 +163,6 @@ public class ShopListener implements Listener{
         	Block clickedBlock = evt.getClickedBlock();
         	
             if (blockIsSign(clickedBlock)){
-            	// TODO: Debug
-            	player.sendMessage("(Debug) You clicked a sign");
-            	////
-            	
             	// a shop is defined as a sign (formatted)
             	// and a chest block immediately below it.
                 Sign sign = (Sign) clickedBlock.getState();
@@ -188,9 +183,6 @@ public class ShopListener implements Listener{
                 }
                 
                 if(blockIsStorage(block)) {
-                	// TODO: debug
-                	player.sendMessage("(Debug) Block is storage unit");
-                	////
                 	Container container = (Container) block.getState();
                 	
                 	if(signIsShop(sign)) {
@@ -344,6 +336,21 @@ public class ShopListener implements Listener{
 		if(meta.hasDisplayName()) {
 			return "" + ChatColor.ITALIC + meta.getDisplayName();
 		}
+		else if(itemIsPolishedBlackstone(item)) {
+			XMaterial itemMaterial = XMaterial.matchXMaterial(item);
+			String[] temp = materialPrettyPrint(itemMaterial.parseMaterial()).split(" ");
+			if(temp.length > 2) {
+				String out = "PB Stone";
+				for(int i = 2; i < temp.length; i++) {
+					out += temp[i] + " ";
+				}
+				
+				return out;
+			}
+			else {
+				return "P Blackstone";
+			}
+		}
 		// Written book names
 		else if(itemIsFinishedBook(item)) {
 			BookMeta bookMeta = (BookMeta) meta;
@@ -366,17 +373,7 @@ public class ShopListener implements Listener{
 			String[] temp = materialPrettyPrint(itemMaterial.parseMaterial()).split(" ");
 			return temp[0] + " Chest.";
 		}
-		// fix for green, red, and yellow dyes
-		else if(mat.name().equals("CACTUS_GREEN")) {
-			return "Green Dye";
-		}
-		else if(mat.name().equals("DANDELION_YELLOW")) {
-			return "Yellow Dye";
-		}
-		else if(mat.name().equals("ROSE_RED")) {
-			return "Red Dye";
-		}
-		
+
 		XMaterial itemMaterial = XMaterial.matchXMaterial(item);
 		return materialPrettyPrint(itemMaterial.parseMaterial());
 	}
@@ -960,6 +957,10 @@ public class ShopListener implements Listener{
     
     private boolean itemIsTippedArrow(ItemStack item) {
     	return item != null && item.getType().equals(XMaterial.TIPPED_ARROW.parseMaterial());
+    }
+    
+    private boolean itemIsPolishedBlackstone(ItemStack item) {
+    	return item != null && item.getType().name().contains("POLISHED_BLACKSTONE");
     }
     
     private String getPotionName(ItemStack potion) {
