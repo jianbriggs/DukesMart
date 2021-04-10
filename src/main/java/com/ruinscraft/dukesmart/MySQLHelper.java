@@ -47,7 +47,7 @@ public class MySQLHelper {
 												+ " location_x int(11) NOT NULL,"
 											    + " location_y int(11) NOT NULL,"
 												+ " location_z int(11) NOT NULL,"
-												+ " material varchar(64) NOT NULL,"
+												+ " material varchar(128) NOT NULL,"
 												+ " item_serialization blob NOT NULL,"
 												+ " quantity int(11) NOT NULL DEFAULT '0',"
 												+ " price int(11) NOT NULL DEFAULT '0',"
