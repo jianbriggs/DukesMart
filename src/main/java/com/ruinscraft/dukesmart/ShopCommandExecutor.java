@@ -27,10 +27,10 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	private final String MSG_LEDGER_WITHDRAW_AMOUNT = "" + ChatColor.AQUA + "You redeemed $%d from your ledger.";
 	private final String MSG_LEDGER_PRINT_BALANCE = "" + ChatColor.AQUA + "Your balance is $%d";
 	private final String MSG_ADMIN_PRINT_PLAYER_BALANCE = "" + ChatColor.AQUA + "%s's balance is $%d";
-	private final String MSG_ADMIN_PLAYER_NO_LEDGER = "" + ChatColor.AQUA + "%s does not have a ledger";
-	private final String MSG_ERROR_ADMIN_PLAYER_NOT_EXIST = "" + ChatColor.RED + "%s has not played before, or does not exist";
-	private final String MSG_ERROR_ADMIN_NO_SHOP_SELECTED = "" + ChatColor.RED + "You need to select a shop before running this command";
-	
+	private final String MSG_ADMIN_PLAYER_NO_LEDGER = "" + ChatColor.AQUA + "%s does not have a ledger.";
+	private final String MSG_ERROR_ADMIN_PLAYER_NOT_EXIST = "" + ChatColor.RED + "%s has not played before, or does not exist.";
+	private final String MSG_ERROR_ADMIN_NO_SHOP_SELECTED = "" + ChatColor.RED + "You need to select a shop before running this command.";
+	private final String MSG_ERROR_PLAYER_CANT_VIEW_OTHERS_RECENT = "" + ChatColor.RED + "Sorry, but you cannot view transactions for a shop you do not own.";
 	private final List<String> tabOptions;
 	private final List<String> adminTabOptions;
 
@@ -107,7 +107,6 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 								playerName = args[1];
 							}
 							adminCheckPlayerBalance(player, playerName);
-							//layer.sendMessage("Player balance lookup placeholder");
 						}
 						else {
 							player.sendMessage(this.MSG_ERROR_NO_PERMISSION);
@@ -122,19 +121,19 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 					break;
 				case "view":
 				case "v":
-					if(player.hasPermission("dukesmart.shop.admin")) {
-						Shop selectedShop = this.plugin.getSelectedShopController().getSelection(player);
-						if(selectedShop == null) {
-							player.sendMessage(this.MSG_ERROR_ADMIN_NO_SHOP_SELECTED);
-						}
-						else {
-							if(args.length >= 2 && args[1].compareToIgnoreCase("recent") == 0) {
-								adminViewRecentTransactions(player, selectedShop);
-							}
-						}
+					Shop selectedShop = this.plugin.getSelectedShopController().getSelection(player);
+					if(selectedShop == null) {
+						player.sendMessage(this.MSG_ERROR_ADMIN_NO_SHOP_SELECTED);
 					}
 					else {
-						player.sendMessage(this.MSG_ERROR_NO_PERMISSION);
+						if(args.length >= 2 && args[1].compareToIgnoreCase("recent") == 0) {
+							if(selectedShop.playerOwnsShop(player) || player.hasPermission("dukesmart.shop.admin")) {
+								viewRecentTransactions(player, selectedShop);
+							}
+							else {
+								player.sendMessage(this.MSG_ERROR_PLAYER_CANT_VIEW_OTHERS_RECENT);
+							}
+						}
 					}
 					break;
 				case "history":
@@ -189,7 +188,7 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
         }
         
         if (args.length == 2) {
-            if(args[0].equalsIgnoreCase("view") && sender.hasPermission("dukesmart.shop.admin")) {
+            if(args[0].equalsIgnoreCase("view")) {
             	completions.add("recent");
             }
             else if( (args[0].equalsIgnoreCase("history") || args[0].equalsIgnoreCase("balance") )&& sender.hasPermission("dukesmart.shop.admin")) {
@@ -204,15 +203,15 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	
 	private void showHelp(Player player) {
 		String[] commandHelpBase = {
-			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " withdraw ($)" + ChatColor.GRAY + ": Removes money from your ledger",
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance" + ChatColor.GRAY + ": Check your ledger balance",
-			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " top" + ChatColor.GRAY + ": View top 10 earners"
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " top" + ChatColor.GRAY + ": View top 10 earners",
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " withdraw ($)" + ChatColor.GRAY + ": Removes money from your ledger",
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view recent" + ChatColor.GRAY + ": View ten most recent transactions for a shop"
 		};
 		
 		String[] commandHelpAdmin = {
-		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view recent" + ChatColor.GRAY + ": View ten most recent transactions for a shop",
-		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " history (player)" + ChatColor.GRAY + ": View ten most recent transactions made by a player",
-		    ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance (player)" + ChatColor.GRAY + ": Check a player's ledger balance"    
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance (player)" + ChatColor.GRAY + ": Check a player's ledger balance", 
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " history (player)" + ChatColor.GRAY + ": View ten most recent transactions made by a player"
 		};
 			
 		if(player.isOnline()) {
@@ -338,11 +337,11 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 		}
 	}
 	
-	private void adminViewRecentTransactions(Player caller, Shop shop) {
+	private void viewRecentTransactions(Player caller, Shop shop) {
 		this.plugin.getMySQLHelper().viewRecentTransactions(shop).thenAccept(transactions -> {
 			if(caller.isOnline()) {
 				caller.sendMessage(PLUGIN_BANNER);
-				caller.sendMessage(ChatColor.AQUA + "Viewing ten recent transactions for selected shop");
+				caller.sendMessage(ChatColor.AQUA + "Viewing ten most recent transactions for selected shop");
 				caller.sendMessage(" ");
 				byte i = 1;
 				for(String t : transactions) {
