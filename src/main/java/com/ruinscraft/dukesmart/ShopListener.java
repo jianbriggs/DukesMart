@@ -163,6 +163,8 @@ public class ShopListener implements Listener{
         	Block clickedBlock = evt.getClickedBlock();
         	
             if (blockIsSign(clickedBlock)){
+            	
+            	
             	// a shop is defined as a sign (formatted)
             	// and a chest block immediately below it.
                 Sign sign = (Sign) clickedBlock.getState();
@@ -187,12 +189,19 @@ public class ShopListener implements Listener{
                 	
                 	if(signIsShop(sign)) {
                 		updateSign(sign);
+                		
+                		// if player is holding a dye, cancel the event to prevent dying over the shop sign text
+                		if(playerHoldingDye(player)) {
+                			evt.setCancelled(true);
+                		}
+                		
                 		if(shopSignHasNoItem(sign)) {
                 			// you must clone the item, otherwise it will be affected later
                 			ItemStack itemToSell = player.getInventory().getItemInMainHand().clone();
                 			
                 			// if player has something in hand (and is owner) set the shop's item
                 			if(!itemIsAir(itemToSell)) {
+                				
             					if(itemIsShulkerBox(itemToSell)) {
             						if(itemToSell.getItemMeta() instanceof BlockStateMeta) {
             							BlockStateMeta bsm = (BlockStateMeta) itemToSell.getItemMeta();
@@ -212,7 +221,7 @@ public class ShopListener implements Listener{
             					else if(itemIsWritableBook(itemToSell)) {
             						itemToSell.setItemMeta(XMaterial.WRITABLE_BOOK.parseItem().getItemMeta());
             					}
-                				
+            					
                 				sign.setLine(1, getItemDisplayName(itemToSell));
                 				// update quantities if they exceed the stack size for the item
                 				updateSignQuantity(player, sign, itemToSell);
@@ -967,6 +976,21 @@ public class ShopListener implements Listener{
     	return item != null && item.getType().name().contains("POLISHED_BLACKSTONE");
     }
     
+    private boolean itemIsDye(ItemStack item) {
+    	return item != null && item.getType().name().contains("_DYE");
+    }
+    
+    private boolean playerHoldingDye(Player player) {
+    	if(player.isOnline()) {
+    		ItemStack inHand = player.getInventory().getItemInMainHand();
+    		
+    		if(itemIsDye(inHand)) {
+    			return true;
+    		}
+    	}
+    	
+    	return false;
+    }
     private String getPotionName(ItemStack potion) {
     	PotionMeta meta = (PotionMeta) potion.getItemMeta();
     	String name = prettyPrint(meta.getBasePotionData().getType().name());
