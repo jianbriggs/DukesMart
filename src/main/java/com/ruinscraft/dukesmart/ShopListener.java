@@ -678,7 +678,7 @@ public class ShopListener implements Listener{
         	BookMeta bookmeta = (BookMeta) meta;
         	
         	if(bookmeta.hasTitle()) {
-        		shopInfoElements.add(truncateText("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + bookmeta.getTitle() + "\""));
+        		shopInfoElements.add(truncateText("" + ChatColor.ITALIC + "\"" + bookmeta.getTitle() + "\""));
         	}
         	
         	if(bookmeta.hasAuthor()) {
@@ -704,18 +704,22 @@ public class ShopListener implements Listener{
         else if(itemIsBanner(item) || itemIsShield(item)) {
         	List<Pattern> patterns = null;
         	
-        	if(itemIsBanner(item)) {
+        	if(itemIsBanner(item) && item.getItemMeta() instanceof BannerMeta) {
 	        	BannerMeta bannerMeta = (BannerMeta) item.getItemMeta();
 	        	patterns = bannerMeta.getPatterns();
         	}
-        	else {
+        	else if(item.getItemMeta() instanceof BlockStateMeta){
                 BlockStateMeta bmeta = (BlockStateMeta) item.getItemMeta();
-                Banner banner = (Banner) bmeta.getBlockState();
-                patterns = banner.getPatterns();
+                if(bmeta instanceof Banner) {
+	                Banner banner = (Banner) bmeta.getBlockState();
+	                patterns = banner.getPatterns();
+                }
         	}
         	
-        	for(Pattern pattern : patterns) {
-        		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getColor().name()) + " " + prettyPrint(pattern.getPattern().name())));
+        	if(patterns != null) {
+	        	for(Pattern pattern : patterns) {
+	        		shopInfoElements.add(truncateText(" - " + prettyPrint(pattern.getColor().name()) + " " + prettyPrint(pattern.getPattern().name())));
+	        	}
         	}
         }
         else if(itemIsEnchantedBook(item)) {
