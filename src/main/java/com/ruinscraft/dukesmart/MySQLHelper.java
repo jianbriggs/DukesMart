@@ -395,6 +395,8 @@ public class MySQLHelper {
                     	while(result.next()) {
 	                    	return new IncomeDateWrapper(result.getInt(1), result.getDate(2));
                     	}
+                    	
+                    	return null;
                     }
                 }
 
@@ -421,14 +423,11 @@ public class MySQLHelper {
                     query.setString(1, playerUUID.toString());
 
                     try (ResultSet result = query.executeQuery()) {
-                    	result.last();
-                    	if(result.getRow() > 0) {
+                    	while(result.next()) {
                     		return result.getInt(1);
                     	}
-                    	else {
-                    		// player must not have a ledger
-                    		return -1;
-                    	}
+                    	
+                    	return -1;
                     }
                 }
 
