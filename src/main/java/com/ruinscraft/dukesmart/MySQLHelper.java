@@ -392,13 +392,14 @@ public class MySQLHelper {
                     query.setString(1, player.getUniqueId().toString());
 
                     try (ResultSet result = query.executeQuery()) {
-                    	result.last();
-                    	if(result.getRow() > 0) {
-                    		return new IncomeDateWrapper(result.getInt(1), result.getDate(2));
-                    	}
-                    	else {
-                    		// player must not have a ledger
-                    		return null;
+                    	while(result.next()) {
+	                    	if(result.getRow() > 0) {
+	                    		return new IncomeDateWrapper(result.getInt(1), result.getDate(2));
+	                    	}
+	                    	else {
+	                    		// player must not have a ledger
+	                    		return null;
+	                    	}
                     	}
                     }
                 }
