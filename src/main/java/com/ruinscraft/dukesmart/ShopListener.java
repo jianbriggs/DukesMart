@@ -10,6 +10,7 @@ import java.util.Map.Entry;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Banner;
 import org.bukkit.block.Barrel;
 import org.bukkit.block.Block;
@@ -273,6 +274,14 @@ public class ShopListener implements Listener{
 		                				hasStock = true;
 		                			}
 		                		}
+		                		else if(itemIsPlayerHead(itemToBuy)) {
+		                			itemToBuy = shopChestFindPlayerHead(storeStock, sign);
+		                			
+		                			if(itemToBuy != null) {
+		                				itemToBuy.setAmount(selectedShop.getQuantity());
+		                				hasStock = true;
+		                			}
+		                		}
 		                		else {
 		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
 		                		}
@@ -285,8 +294,11 @@ public class ShopListener implements Listener{
 			                			if(pi.containsAtLeast(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL), selectedShop.getPrice())){
 
 			                				storeStock.removeItem(itemToBuy);
-
 				                			pi.removeItem(new ItemStack(plugin.SHOP_CURRENCY_MATERIAL, selectedShop.getPrice()));
+				                			
+				                			if(itemIsPlayerHead(selectedShop.getItem())){
+	                							updatePlayerHeadShopSign(container.getInventory(), sign);
+	                						}
 
 				                			pi.addItem(itemToBuy);
 				                			
@@ -321,9 +333,13 @@ public class ShopListener implements Listener{
                 				this.plugin.getMySQLHelper().getShopFromLocation(shopLocation).thenAccept(shop ->{
                 					if(player.isOnline() && shop != null) {
                 						player.sendMessage(ChatColor.GREEN + "Shop selected.");
+                						
                 						this.plugin.getSelectedShopController().addSelection(player, shop);
                 						
 	                					Bukkit.getScheduler().runTask(this.plugin, () -> {
+	                						if(itemIsPlayerHead(shop.getItem())){
+	                							updatePlayerHeadShopSign(container.getInventory(), sign);
+	                						}
 	                						displayShopInformation(player, shop);
 	                					});
                 					}
@@ -336,8 +352,41 @@ public class ShopListener implements Listener{
         }
     }
     
-    
-    private String getItemDisplayName(ItemStack item) {
+	private void updatePlayerHeadShopSign(Inventory inventory, Sign sign) {
+		ItemStack newPlayerHead = shopChestFindPlayerHead(inventory, sign);
+		
+		if(newPlayerHead != null) {
+			if(newPlayerHead.getItemMeta().hasDisplayName()) {
+				sign.setLine(1, newPlayerHead.getItemMeta().getDisplayName());
+			}
+			else {
+				sign.setLine(1, prettyPrint(newPlayerHead.getType().toString()));
+			}
+			sign.update();
+		}
+	}
+
+	private ItemStack shopChestFindPlayerHead(Inventory storeStock, Sign sign) {
+		ItemStack[] chestItems = storeStock.getContents();
+
+		for(int i = 0; i < chestItems.length; i++) {
+			ItemStack temp = chestItems[i];
+			
+			if(itemIsPlayerHead(temp)) {
+				ItemStack head = temp.clone();
+				head.setAmount(1);
+				return head;
+			}
+		}
+		
+		return null;
+	}
+
+	private boolean itemIsPlayerHead(ItemStack itemToBuy) {
+		return itemToBuy != null && itemToBuy.getType().equals(Material.PLAYER_HEAD);
+	}
+
+	private String getItemDisplayName(ItemStack item) {
     	ItemMeta meta = item.getItemMeta();
     	Material mat = item.getType();
     	
@@ -679,8 +728,19 @@ public class ShopListener implements Listener{
         shopInfoElements.add("" + ChatColor.GRAY + "------------------------------------");
         shopInfoElements.add("" + ChatColor.RED + ChatColor.BOLD + "For sale");
         shopInfoElements.add(materialPrettyPrint(item.getType()));
-        if(meta.hasDisplayName()) {
-        	shopInfoElements.add(truncateText("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\""));
+        if(meta.hasDisplayName() || itemIsPlayerHead(item)) {
+        	
+        	if(itemIsPlayerHead(item)) {
+        		Block signBlock = player.getWorld().getBlockAt(shop.getLocation());
+        		
+        		if(blockIsSign(signBlock)) {
+        			Sign sign = (Sign) signBlock.getState();
+        			shopInfoElements.add(truncateText(sign.getLine(1)));
+        		}
+        	}
+        	else {
+        		shopInfoElements.add(truncateText("" + ChatColor.GOLD + ChatColor.ITALIC + "\"" + meta.getDisplayName() + "\""));
+        	}
         }
         
         if(itemIsFinishedBook(item)) {
