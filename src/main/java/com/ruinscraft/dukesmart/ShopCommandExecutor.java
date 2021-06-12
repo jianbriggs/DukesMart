@@ -33,21 +33,32 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 	private final String MSG_ERROR_PLAYER_CANT_VIEW_OTHERS_RECENT = "" + ChatColor.RED + "Sorry, but you cannot view transactions for a shop you do not own.";
 	private final List<String> tabOptions;
 	private final List<String> adminTabOptions;
-
+	private final List<String> tutorialText;
 	private Map<Player, Long> recentWithdraws;
 	
 	public ShopCommandExecutor(DukesMart plugin) {
 		this.plugin = plugin;
 		this.tabOptions = new ArrayList<String>();
 		this.adminTabOptions = new ArrayList<String>();
+		this.tutorialText = new ArrayList<String>();
 		this.recentWithdraws = new HashMap<>();
 		
-		tabOptions.add("withdraw");
 		tabOptions.add("balance");
 		tabOptions.add("top");
+		tabOptions.add("tutorial");
+		tabOptions.add("view");
+		tabOptions.add("withdraw");
 		
-		adminTabOptions.add("view");
+		
 		adminTabOptions.add("history");
+		
+		tutorialText.add(ChatColor.GOLD + "--- How to create a chest shop ---");
+		tutorialText.add(ChatColor.AQUA + " 1. Place a sign on or above a chest.");
+		tutorialText.add(ChatColor.AQUA + " 2. On the first line, put \"[Buy]\" (case-insensitive)");
+		tutorialText.add(ChatColor.AQUA + " 3. On the third line, put \"x for $y\", where x is the quantity of the item, and y is the price in gold ingots.");
+		tutorialText.add(ChatColor.AQUA + " 4. Finally, right-click the sign with the item to sell in your hand.");
+		tutorialText.add(ChatColor.AQUA + " 5. Place all items for sale in the chest.");
+		
 	}
 	
 	@Override
@@ -126,7 +137,7 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 						player.sendMessage(this.MSG_ERROR_ADMIN_NO_SHOP_SELECTED);
 					}
 					else {
-						if(args.length >= 2 && args[1].compareToIgnoreCase("recent") == 0) {
+						if(args.length >= 2 && args[1].equalsIgnoreCase("recent")) {
 							if(selectedShop.playerOwnsShop(player) || player.hasPermission("dukesmart.shop.admin")) {
 								viewRecentTransactions(player, selectedShop);
 							}
@@ -153,6 +164,10 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 					else {
 						player.sendMessage(this.MSG_ERROR_NO_PERMISSION);
 					}
+					break;
+				case "tutorial":
+				case "tut":
+					showTutorial(player);
 					break;
 				default:
 					showHelp(player);
@@ -205,6 +220,7 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 		String[] commandHelpBase = {
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " balance" + ChatColor.GRAY + ": Check your ledger balance",
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " top" + ChatColor.GRAY + ": View top 10 earners",
+			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " tutorial" + ChatColor.GRAY + ": How to create a chest shop",
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " withdraw ($)" + ChatColor.GRAY + ": Removes money from your ledger",
 			ChatColor.DARK_AQUA + "  /shop" + ChatColor.AQUA + " view recent" + ChatColor.GRAY + ": View ten most recent transactions for a shop"
 		};
@@ -364,6 +380,14 @@ public class ShopCommandExecutor implements CommandExecutor, TabCompleter{
 				}
 			}
 		});
+	}
+	
+	private void showTutorial(Player caller) {
+		if(caller.isOnline()) {
+			for(String line : this.tutorialText) {
+				caller.sendMessage(line);
+			}
+		}
 	}
 	/**
 	 * Checks if a given string is a number
