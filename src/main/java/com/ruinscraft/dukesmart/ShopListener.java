@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.Map.Entry;
 
 import org.bukkit.Bukkit;
+import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -35,6 +36,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.BannerMeta;
@@ -282,6 +284,14 @@ public class ShopListener implements Listener{
 		                				hasStock = true;
 		                			}
 		                		}
+		                		else if(itemIsShulkerBox(itemToBuy)) {
+		                			itemToBuy = shopChestFindShulkerBox(storeStock, itemToBuy.clone(), sign);
+		                			
+		                			if(itemToBuy != null) {
+		                				itemToBuy.setAmount(selectedShop.getQuantity());
+		                				hasStock = true;
+		                			}
+		                		}
 		                		else {
 		                			hasStock = shopChestContainsItem(storeStock, itemToBuy, selectedShop);
 		                		}
@@ -381,7 +391,42 @@ public class ShopListener implements Listener{
 		
 		return null;
 	}
+	
+	private ItemStack shopChestFindShulkerBox(Inventory storeStock, ItemStack shulkerToFind, Sign sign) {
+		ItemStack[] chestItems = storeStock.getContents();
+		
+		for(int i = 0; i < chestItems.length; i++) {
+			ItemStack temp = chestItems[i];
+			
+			if(itemIsShulkerBox(temp)) {
+				// very important to check for meta! new shulkers that have never held
+				// an item do NOT have meta according to bukkit!
+				if(temp.hasItemMeta()) {
+					ItemMeta meta = temp.getItemMeta();
 
+					if(meta instanceof BlockStateMeta) {
+						BlockStateMeta bsm = (BlockStateMeta) meta;
+
+						if(bsm.getBlockState() instanceof ShulkerBox) {
+							ShulkerBox shulker = (ShulkerBox) bsm.getBlockState();
+
+							if(shulkerToFind.getType().equals(shulker.getType())) {
+								if(shulker.getSnapshotInventory().isEmpty()) {
+									return temp.clone();
+								}
+							}
+						}
+					}
+				}
+				// if it doesn't have meta, it is safe to assume it is empty. check for same material
+				else if(shulkerToFind.getType().equals(temp.getType())){
+					return temp.clone();
+				}
+			}
+		}
+		
+		return null;
+	}
 	private boolean itemIsPlayerHead(ItemStack itemToBuy) {
 		return itemToBuy != null && itemToBuy.getType().equals(Material.PLAYER_HEAD);
 	}
